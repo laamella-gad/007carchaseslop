@@ -1,0 +1,237 @@
+# 007 Car Chase notes
+
+"007 Car Chase", (c) 1985 Coplin Software: a James Bond style car chase for the C64. You drive down a road
+made of country, city, tunnel, curve and bridge sections. You shoot enemy cars with guns or lay smoke behind you,
+and you can shoot the helicopter with a missile. The original is a BASIC V2 program plus a small machine code
+helper at $c000.
+
+## Files
+
+| File | What |
+|---|---|
+| `007CARCH.d64` | The disk: `007 car chase` (loader), `007.bas` (the game), `007` (the helper, $c000-$cfff) |
+| `007.bas`, `07.bas` | The game as loaded at $1001, and its listing (`petcat -w2 -l 1001 -o 007.bas -- 07.bas` makes it again, byte for byte) |
+| `007` | The helper as on the disk, load address $c000 |
+| `007.vsf` | VICE snapshot taken during a game, the input for Deflower |
+| `007.flo` | Deflower annotations: `deflower --verify 007.flo` writes `out/007.asm` (0 differ, 0 gaps) and the exports below |
+| `out/sprites_13_15.bin` | Sprite blocks 13-15 ($0340-$03ff) |
+| `out/sprites_33_34.bin` | Sprite blocks 33-34 ($0840-$08bf) |
+| `out/sprites_40_54.bin` | Sprite blocks 40-54 ($0a00-$0dbf) |
+| `out/tune_notes.bin` | The title tune's note table ($c800-$c8e3) |
+| `out/007bas.prg` | The BASIC program, the same as `007.bas` |
+| `007.prg`, `code.asm`, `1.bin`, `2.bin` | An older attempt: a WFDis paste that doesn't assemble, and a PRG with the sprite data one byte off. Not used (its Makefile was replaced by the rewrite's) |
+| `src/` | The C rewrite for oscar64; `src/text.c` and `src/text.h` are made by `tools/bas2c.py` |
+| `tools/c64time.c` | A 6502/C64 emulator that runs the BASIC game from `007.vsf` with random keys and times each line |
+| `tools/bas2c.py` | Makes the strings, row tables and line times for the rewrite from `007.bas` and `build/timing.txt` |
+| `007carchase.prg` | The rewrite, crunched (`make`) |
+
+## Loading
+
+`007 car chase` at $0801 shows a title, does `poke44,16` (BASIC starts at $1001), and puts `LOAD"007.BAS",8` and
+`RUN` in the keyboard buffer. Line 0 of `007.bas` loads `007` to $c000. Lines 2-4 copy the sprites (`gosub 8000`)
+and set up. RUN again skips most of the copy, because `sprites_copied` ($cfd0) is 21 by then.
+
+`007` on the disk and the snapshot's $c000-$cfff differ only in 5 variables: `tune_pos`, `sprites_copied` and three
+car directions. The routines at $c6d4, $c738 and $cabc and the note table at $c800 are also in DATA lines
+10000-10060. Lines 8019-8052 POKE them into place, with the same bytes as the file.
+
+## Memory map
+
+| Address | What |
+|---|---|
+| $0340-$03ff | Sprite blocks 13 player car, 14 enemy car, 15 helicopter |
+| $0400-$07e7 | Screen (VIC bank 0, ROM charset) |
+| $0800-$083f, $08c0-$09ff | Loader leftovers in blocks 32 and 35-39, never shown |
+| $0840-$08bf | 33 explosion, 34 bomb |
+| $0a00-$0b7f | 40-45 gun fire animation (44 and 45 are cleared: the flash ends) |
+| $0b80-$0dbf | 46 missile, 47 smoke, 48/49 player/enemy car on the bridge, 50 headlights, 51 bonus car, 52-54 title logo |
+| $1001-$9816 | BASIC program; variables after it, strings below $a000 |
+| $c000-$c794 | Helper routines |
+| $c7fe-$c7ff | `tune_loops`, `tune_pos` |
+| $c800-$c8e3 | `tune_notes`: 76 notes of 3 bytes (freq hi, freq lo, SR) |
+| $cabc-$cae0 | `title_scroll` |
+| $cb20-$cf9d | `sprite_source`: the sprites before BASIC copies them into their blocks |
+| $cfd0-$cfff | Shared with BASIC (below) |
+
+All sprites are multicolour (`poke53276,255`), with shared colours 0 and 2.
+
+## BASIC and helper
+
+Shared variables:
+
+| Address | Dec | Name | What |
+|---|---|---|---|
+| $cfd0 | 53200 | `sprites_copied` | 21 after the sprite copy |
+| $cff0 | 53232 | `turbo` | 1 after F1, 0 after F3. Also a factor in the score: `(peek(53232)+1)*50` per car |
+| $cff1 | 53233 | `headlights_on` | 1 in the tunnel: `headlights_follow` puts the headlights (sprite 5) at the player's x every frame. Line 846 does it too |
+| $cff3 | 53235 | `crash_reset_on` | Never set by BASIC |
+| $cff9-$cffb | 53241-3 | `car1..3_direction` | Enemy cars: 1-5 = direction, 0 = off the road (BASIC respawns them) |
+| $cffc | 53244 | `car4_direction` | The car from behind, 1-5, 0 = gone |
+| $cffd | 53245 | `heli_state` | 1 flying, 2 drop bomb, 3 bomb falling |
+| $cffe | 53246 | `weapon_state` | 0 free, 1 guns, 2 missile, 3 smoke |
+
+Entry points:
+
+| SYS | Routine | What |
+|---|---|---|
+| 49152 | `turbo_frame` | A second `frame_update` if turbo is on, else nothing. Called between PRINT rows |
+| 49155 | `frame_update` | One frame: keys, cars, F1/F3, car 4, helicopter, weapon |
+| 49561 | `weapon_update` | Just the weapon |
+| 50900 | `sound_explosion` | Noise on voice 1 |
+| 51000 | `tune_play` | Next note of the tune, voice 2: on the title, and between the road rows of the tunnel and the curves |
+| 51900 | `title_scroll` | Title logo sprites 0-3 left by 3 pixels |
+
+BASIC patches the helper:
+- Line 3 puts `jsr joystick_controls` at $c1de, and line 39 puts `rts` at $c1e1, at the end of `frame_extras`.
+  `weapon_update` ends with `lda #5 : cmp weapon_state : beq rts : bne frame_extras`, so `frame_extras` runs on
+  every `weapon_update` (states 0-3): `headlights_follow`, `crash_reset_check` (does nothing, `crash_reset_on` is
+  0), `print_credit` and `joystick_controls`.
+- Line 4 puts three `nop`s at $c015.
+- Line 40 sets the y where the guns and the missile start ($c57c, $c5b2) to 120. They are already 120.
+
+`frame_update` reads the keys from `last_key` ($c5): M right, Z left, SPACE guns, '.' missile, ',' smoke, F1 turbo,
+F3 normal. BASIC reads F5 (pause) and F7 (restart) itself. `joystick_controls` reads the joystick in port 2 as
+well: fire guns, up missile, down smoke, left, right (exact values, so no diagonals). Every move is a run of `inx`/`dex`: the player 10 pixels, the cars and
+the helicopter 5, the slower car directions 2 or 3.
+
+## The game (BASIC)
+
+- 11000: title. The "007" logo is sprites 0-3 (pointers 52, 53, 53, 54), scrolled by `title_scroll` while
+  `tune_play` plays the tune. 'i' shows the instructions (12000-12400).
+- 7000: a new track. `cr(1..6)` are random section choices 1-3 and `cr(7)` = 6 is the end. They are drawn as a
+  plan at the bottom right.
+- Line 91: the panel (track, plan, cars, score). Lines 100-115 set up the sprites: the player at (180,160), enemy
+  cars 1-3 at (180,80) with random directions, car 4 from below, and the helicopter at (80,55).
+- Sections: each one PRINTs its road rows `d` times, with SYS calls between them. After a section, `cr()` picks
+  the next one:
+
+  | Section | Lines | d | cr=1 | cr=2 | cr=3 |
+  |---|---|---|---|---|---|
+  | Country | 188-251 | 10 | tunnel 500 | left curve 1000 | bridge 2100 |
+  | City | 380-499 | 10 | country | tunnel | country |
+  | Tunnel | 500-529, 780-850 | 10 | city | country | country |
+  | Left curve | 1000-1060 | 3 | country | right curve | country |
+  | Right curve | 1100-1160 | 3 | country | left curve | country |
+  | Bridge | 2100-2250 | 30 | country | | |
+
+  The country section says "bridge out on left" when the bridge is next. On the bridge, x 170-200 is water
+  (a crash).
+- `gosub 5`, each step: collisions are checked by comparing sprite coordinates.
+  - An enemy within ±18 pixels in x is shot by the guns at y 110-140, or stopped by the smoke at y 175-200: 33
+    explosion, `sound_explosion`, score `(turbo+1)*50`.
+  - An enemy at y 140-180 is a crash: the car slides (5999/6000) and you lose one of 3 cars.
+  - The bomb near the player is also a crash.
+  - The missile at y 50-70 within ±15 of the helicopter scores 2000 (line 57).
+- End of the track: bonus `bp += 1000` and the bonus animation (13000), then a new track (7100 → 7000).
+- Out of cars: high score table (20000-20110, top 10 agents), then the title.
+- Unused: line 9000 (a loader), lines 1300-1600 (test code).
+
+## Bugs and oddities in the original
+
+- **The tune's ends.** `tune_notes` holds (freq hi, freq lo, SR) per note. `tune_play` reads the 3 bytes after
+  `tune_pos`, which starts at 2, so the tune starts at note 1, not 0. A pass ends at $e9, so the last two notes
+  read 6 bytes past the table, from the power-on pattern at $c8e4 (a very low note with SR 0, then a very high
+  one). After the first pass the tune loops from offset $5c (note 31), and after 3 loops it starts from the top.
+- **Sprite copy offsets.** Lines 8000-8028 copy 63 bytes per sprite from `sprite_source`, but the source
+  addresses are 63 to 65 bytes apart (52063 → 52127 → 52190 → 52255). The game shows what was copied, so the
+  rewrite uses the copied blocks, not `sprite_source`.
+- **Dead code.** `unused_smoke_follow` ($c5f3) and `unused_title_scroll` ($c6f9) are never called.
+  `crash_reset_on` is never set, so `crash_reset_check` does nothing; `crash_reset` itself is reached from
+  `player_left`/`player_right` at the kerbs, where x is never $b4, so it does nothing either.
+- **Keyboard smoke.** ',' starts the smoke, but `smoke_follow` (weapon 3) ends it on the next `weapon_update`
+  unless the joystick is held down. `unused_smoke_follow` tested the ',' key instead. With the keyboard the smoke
+  shows for at most a frame, and `gosub 5` rarely sees weapon state 3.
+- **The credit.** `print_credit` writes "(c) coplin software" to row 23 every frame, so the scrolling road
+  can't wipe it out. Row 23 of the PRINTed road never shows in those columns.
+- **?ILLEGAL QUANTITY.** `player_left` stops only at exactly x $50 (and `player_right` at $fa). Lines 6000/6001 (the
+  crash slide) take 10 off while x > 60, so a crash near the left kerb leaves x at 50 or below; then 'Z' walks
+  past $50 to 0, and the next `pokev,peek(v)-10` (6000) or `peek(v)-20` (1026, left curve) is negative: the
+  game stops with ?ILLEGAL QUANTITY ERROR. Seen in the timing run (below) 15 times in 6000 s of random keys.
+- **The high score table ENDs.** Lines 20002-20011 place a score with strict `>` and `<`. A score equal to one
+  in the table falls through to line 20049, `end`.
+- **The high score shift.** Line 20100 moves the entries down with `forn=9toxstep-1:sc(n)=sc(n-1)`, so the old
+  9th place is lost and the old 10th stays. The input (20055) is on the new entry's row, and INPUT reads back
+  the whole screen row: for a 10th place, line 20002 doesn't clear the old name, so its rest after the typed
+  name becomes part of the new one (`left$` 8; "AB" over "ZORRO" is "ABRRO"). Short names keep the spaces up
+  to 8 characters.
+- Line 235 tests `cr=1`, a plain variable that is always 0, next to the `cr(p)` tests: dead.
+- The routines sit at round addresses with gaps of zeros between them. Some 3-byte instructions were cut to
+  `rts nop nop` ($c154, $c187, $c193, $c1c6, $c1d2). $c1e2 still holds the operand of the instruction that was at
+  $c1e1, `$c018`.
+
+## Timing
+
+The game has no frame sync: it runs as fast as BASIC goes, one `sys` of the helper between PRINTs. So the
+rewrite takes its time from the original, line by line.
+
+`tools/c64time.c` (`make timing`, about 3.5 minutes) loads `007.vsf` with the ROMs and emulates the CPU, the
+KERNAL's 60 Hz IRQ and the keyboard. It holds a random key (M, Z, space, '.', ',' or none) for 400000 cycles at
+a time and puts a key in the buffer where the game waits for one (space or 'I' at the title), for 20000
+emulated seconds, without the joystick and writes `build/timing.txt`: per BASIC line
+(CURLIN, $39/$3a) the number of passes and the average, minimum and maximum PAL cycles per pass, without the
+time spent in the subroutines it calls (a line left with GOSUB, whose token $8d is on the stack, doesn't end a
+pass). It restarts from the snapshot when the game stops: at READY after an error ($a474) and at the `end` in
+line 20049. It also prints into a shadow of the screen with a simple PETSCII printer and compares it to the
+real screen, which shows that the rewrite's printer (no logical lines) draws what the KERNAL draws.
+
+A pass is from entering a line to leaving it, so a line that loops on itself (11070, a FOR loop in one line)
+counts the whole loop as one pass. Those are divided by the number of loops in the rewrite: 11070 by the
+title_scroll calls per wait (669 in 178 waits), 20058 by 77, the bonus lines 13012-13029 by their FOR counts.
+
+`tools/bas2c.py` (`make text`) writes `CYCLES_<line>` for every line (0 for the lines the run never reached).
+`pace(CYCLES_n)` in the C code waits until that much time has passed since the last pace: the target is
+cumulative, so the C code can take any time up to the original's. CIA 2 timer A counts 256 cycles, timer B
+counts its underflows. After a wait for a key, `pace_restart()` starts from now; when the C code is more than
+2000 ticks (half a second) behind, the target catches up instead of rushing.
+
+Not measured, estimated: the pause delay (line 58, 1001 FOR loops at about 1350 cycles) and line 13010 (the
+player to the left before the bonus, about 2750 cycles a step).
+
+## The rewrite
+
+One file per part, each named after its BASIC lines in the comments:
+
+| File | What | Lines |
+|---|---|---|
+| `main.c` | Memory layout, setup, the main loop | 2-4, 39-44 |
+| `system.c` | PETSCII printer, keys, INPUT, pacing | the KERNAL |
+| `helper.c` | The machine code helper: cars, keys, joystick, weapon, credit | $c000-$c6ff |
+| `sound.c` | The explosion, the tune, the crash and the bonus siren | $c6d4, $c738, 6003, 13011 |
+| `text.c` | (made) the PRINT strings and the row tables | all |
+| `game.c` | The BASIC variables shared between the parts; playing back row tables | |
+| `cars.c` | Spawns, the collision pass, explosions, the crash | 5-135, 5999-6099 |
+| `road.c` | The panel and the sections: country, city, tunnel, curves, bridge | 91-98, 140-2250 |
+| `plan.c` | The plan at the bottom right, the bonus | 7000-7500, 13000 |
+| `title.c` | Title and instructions | 11000-12420 |
+| `hiscore.c` | Top 10 | 20000-20110 |
+
+Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turns each run of
+them into a table of `{text, helper calls, cycles}` (`rows_200` is lines 200-214) that `play_rows` plays back.
+The other lines are written out in C, each followed by its `LINE(n)` pace.
+
+Memory: VIC bank 0 as in the original (screen $0400, ROM character set). The sprites are blocks 40-59 at
+$0a00-$0eff: 40-54 where the original has them, and its blocks 13-15 and 33-34 (at $0340 and $0840) moved to
+55-59. Code and data from $0f00 to $a000.
+
+Compiler bug: oscar64 1.32.271 at `-O2` turned the sign extension `AND #$80 / BPL +2 / LDA #$ff / STA` into
+`TYA` (Y was $ff) after placing the branch, so the `BPL` landed in the middle of the `STA`. That was in
+`plan_new` with `signed char x, y`, and still happens with oscar64 at commit 2357b11 (October 2026). When a plan was drawn, the game ran into garbage and ended at READY. Those
+variables are `int` now, and `make` runs `tools/branchcheck.py` on the listing, which fails the build if any
+branch or jump misses an instruction start.
+
+Differences from the original:
+
+- Nothing of the loader: the helper's code is C, the sprites are in the PRG (no copy, no `sprites_copied`), the
+  DATA lines are gone.
+- ?ILLEGAL QUANTITY: the crash slide (6000/6001) and the bonus (13010) stop x at 0 instead of stopping the
+  program. The left curve's `-20` (1026, 1049) goes to 80 as the line meant.
+- Phase 4 fixes:
+  - The tune plays its 76 notes from note 0, without the two notes from past the table.
+  - High scores: a new score goes below the scores it doesn't beat, so a tie is entered too instead of `end`;
+    the entries from there move down one, 10th place drops out. The name column of the entry is cleared before
+    the input, and the spaces after the name are cut.
+  - Smoke stays while ',' is held down, as with the joystick down.
+  - The kerbs stop the player at or before $50 and $fa from any x, and a car past a kerb (after the crash
+    slide) can only move back onto the road.
+- INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
+- The printer has no logical lines (the game never links two rows).

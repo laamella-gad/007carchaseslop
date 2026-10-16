@@ -1,0 +1,136 @@
+$00c5-$00c6 virtual byte last_key
+$0340-$0400 byte[192] export sprites_13_15.bin sprite_player_car
+$0400-$07e8 virtual byte[1000] screen_ram
+$07f8-$0800 virtual byte[8] sprite_pointers
+$0800-$0840 virtual byte[64] leftover_0800
+$0840-$08c0 byte[128] export sprites_33_34.bin sprite_explosion
+$08c0-$0a00 virtual byte[320] leftover_08c0
+$0a00-$0dc0 byte[960] export sprites_40_54.bin sprite_guns
+$0dc0-$1000 virtual byte[576] untouched_0dc0
+$1000-$1001 byte basic_start_zero
+$1001-$9817 byte[34838] export 007bas.prg basic_program
+$9817-$9953 virtual byte[316] basic_variables
+$9953-$9ff9 virtual byte[1702] untouched_9953
+$9ff9-$a001 virtual byte[8] basic_strings
+$a001-$c000 virtual byte[8191] untouched_a001
+$c000-$c003 code turbo_frame
+$c003-$c004 code frame_update
+$c004-$c04f code frame_keys
+$c04f-$c08e code frame_car1
+$c08e-$c0cd code frame_car2
+$c0cd-$c10c code frame_car3
+$c10c-$c14b code frame_car4
+$c14b-$c155 code frame_car4_skip
+$c155-$c157 byte[2] pad_c155
+$c157-$c188 code frame_helicopter
+$c188-$c18a byte[2] pad_c188
+$c18a-$c194 code lC18A
+$c194-$c196 byte[2] pad_c194
+$c196-$c199 code lC196
+$c199-$c1c7 code weapon_update
+$c1c7-$c1c9 byte[2] pad_c1c7
+$c1c9-$c1d3 code lC1C9
+$c1d3-$c1d5 byte[2] pad_c1d3
+$c1d5-$c1e2 code frame_extras
+$c1e2-$c1e4 byte[2] pad_c1e2
+$c1e4-$c201 code player_right
+$c201-$c20a virtual byte[9] unused_c201
+$c20a-$c227 code player_left
+$c227-$c230 virtual byte[9] unused_c227
+$c230-$c254 code car1_down_left5
+$c254-$c275 code car1_down_left2
+$c275-$c278 virtual byte[3] unused_c275
+$c278-$c291 code car1_down
+$c291-$c295 virtual byte[4] unused_c291
+$c295-$c2b6 code car1_down_right2
+$c2b6-$c2b7 virtual byte unused_c2b6
+$c2b7-$c2db code car1_down_right5
+$c2db-$c2e0 virtual byte[5] unused_c2db
+$c2e0-$c304 code car2_down_left5
+$c304-$c309 virtual byte[5] unused_c304
+$c309-$c32b code car2_down_left3
+$c32b-$c32c virtual byte unused_c32b
+$c32c-$c345 code car2_down
+$c345-$c349 virtual byte[4] unused_c345
+$c349-$c36b code car2_down_right3
+$c36b-$c36c virtual byte unused_c36b
+$c36c-$c390 code car2_down_right5
+$c390-$c3b4 code car3_down_left5
+$c3b4-$c3d6 code car3_down_left3
+$c3d6-$c3d7 virtual byte unused_c3d6
+$c3d7-$c3f0 code car3_down
+$c3f0-$c3f4 virtual byte[4] unused_c3f0
+$c3f4-$c416 code car3_down_right3
+$c416-$c417 virtual byte unused_c416
+$c417-$c43b code car3_down_right5
+$c43b-$c45f code car4_up_right5
+$c45f-$c481 code car4_up_right3
+$c481-$c482 virtual byte unused_c481
+$c482-$c49b code car4_up
+$c49b-$c49f virtual byte[4] unused_c49b
+$c49f-$c4c1 code car4_up_left3
+$c4c1-$c4c2 virtual byte unused_c4c1
+$c4c2-$c4e6 code car4_up_left5
+$c4e6-$c4f2 code heli_fly
+$c4f2-$c504 code heli_drop_bomb
+$c504-$c507 virtual byte[3] unused_c504
+$c507-$c52b code bomb_fall
+$c52b-$c536 code turbo_check
+$c536-$c54d code turbo_keys
+$c54d-$c553 code turbo_on
+$c553-$c559 code turbo_off
+$c559-$c568 code headlights_follow
+$c568-$c589 code fire_guns
+$c589-$c59e code guns_animate
+$c59e-$c5bc code fire_missile
+$c5bc-$c5d5 code missile_fly
+$c5d5-$c5f3 code fire_smoke
+$c5f3-$c609 code unused_smoke_follow
+$c609-$c611 code crash_reset_check
+$c611-$c62e code crash_reset
+$c62e-$c661 code joystick_controls
+$c661-$c678 code smoke_follow
+$c678-$c6ce code print_credit
+$c6ce-$c6d4 virtual byte[6] untouched_c6ce
+$c6d4-$c6f9 code sound_explosion
+$c6f9-$c71e code unused_title_scroll
+$c71e-$c738 virtual byte[26] untouched_c71e
+$c738-$c795 code tune_play
+$c795-$c7fe virtual byte[105] untouched_c795
+$c7fe-$c7ff byte tune_loops
+$c7ff-$c800 byte tune_pos
+$c800-$c8e4 byte[228] export tune_notes.bin tune_notes
+$c8e4-$c8ea byte[6] tune_overread
+$c8ea-$c900 virtual byte[22] untouched_c8ea
+$c900-$cabc virtual byte[444] unused_c900
+$cabc-$cae1 code title_scroll
+$cae1-$cb20 virtual byte[63] unused_cae1
+$cb20-$cf9e byte[1150] sprite_source
+$cf9e-$cfd0 virtual byte[50] unused_cf9e
+$cfd0-$cfd1 byte sprites_copied
+$cfd1-$cff0 virtual byte[31] unused_cfd1
+$cff0-$cff1 byte turbo
+$cff1-$cff2 byte headlights_on
+$cff2-$cff3 virtual byte unused_cff2
+$cff3-$cff4 byte crash_reset_on
+$cff4-$cff9 virtual byte[5] unused_cff4
+$cff9-$cffa byte car1_direction
+$cffa-$cffb byte car2_direction
+$cffb-$cffc byte car3_direction
+$cffc-$cffd byte car4_direction
+$cffd-$cffe byte heli_state
+$cffe-$cfff byte weapon_state
+$cfff-$d000 virtual byte unused_cfff
+$d000-$d010 virtual byte[16] vic_sprite_coords
+$d400-$d402 virtual word voice1_frequency
+$d404-$d405 virtual byte voice1_control
+$d405-$d406 virtual byte voice1_attack_decay
+$d407-$d409 virtual word voice2_frequency
+$d409-$d40b virtual word voice2_pulse_width
+$d40b-$d40c virtual byte voice2_control
+$d40c-$d40d virtual byte voice2_attack_decay
+$d40d-$d40e virtual byte voice2_sustain_release
+$d418-$d419 virtual byte sid_vol_filter
+$dc00-$dc01 virtual byte cia1_port_a
+$e000-$fd30 virtual byte[7472] untouched_e000
+$fd50-$10000 virtual byte[688] untouched_fd50

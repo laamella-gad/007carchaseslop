@@ -1,0 +1,257 @@
+; 007.vsf: VICE snapshot of a C64SC
+; $01 = $37: BASIC in, KERNAL in, I/O in
+; CPU: PC $ad66 A $71 X $da Y $01 SP $da P $21
+; the PC is in ROM
+; stack $01db-$0200: 81 58 98 81 80 00 00 00 01 87 48 00 00 00 71 17 ...
+; top of stack as a jsr return address: $5882
+; top of stack as an interrupt's return address: $9858
+; IRQ $0314 -> $ea31 (ROM)
+; BRK $0316 -> $fe66 (ROM)
+; NMI $0318 -> $fe47 (ROM)
+; VIC bank 0 ($0000-$3fff), text, screen $0400, charset $1000 (ROM)
+; sprites on, pointers at $07f8: 0 $0340, 1 $0380, 2 $0380, 3 $0380, 4 $0340, 5 $03c0, 6 $0880, 7 $0000
+; interrupt sources: CIA1 timer A (IRQ)
+; BASIC program $1001-$9817
+deflower 007.vsf
+include c64.flo
+
+; 007 Car Chase (Coplin Software, 1985): a BASIC V2 game (007.bas) with a machine
+; code helper at $c000 (file "007"). BASIC draws the road by PRINTing rows and calls
+; the helper with SYS between them; the two talk through $cfd0-$cfff and the VIC.
+
+; ---------------------------------------------------------------- screen
+; screen row 22, columns 13-31: the helper prints "(c) coplin software" here
+$079d credit_text
+
+; ---------------------------------------------------------------- sprites (low)
+; Sprite blocks the BASIC copies from sprite_source (lines 8000-8028).
+; 13 player car, 14 enemy car, 15 helicopter
+$0340-$0400 byte sprites_13_15 export sprites_13_15.bin
+$0340 sprite_player_car
+$0380 sprite_enemy_car
+$03c0 sprite_helicopter
+
+; ---------------------------------------------------------------- sprites (high)
+; block 32: left over from the loader's BASIC program, not a sprite
+$0800-$0840 virtual byte leftover_0800
+; 33 explosion, 34 helicopter bomb.
+; The copy for block 33 starts 2 bytes late in sprite_source (52255, not 52253)
+$0840-$08c0 byte sprites_33_34 export sprites_33_34.bin
+$0840 sprite_explosion
+$0880 sprite_bomb
+; blocks 35-39: left over from the loader's title text, not sprites
+$08c0-$0a00 virtual byte leftover_08c0
+; 40-45 gun fire animation (44 and 45 are cleared by line 8015: the flash ends),
+; 46 missile, 47 smoke, 48 player car on the bridge, 49 enemy car on the bridge,
+; 50 headlights in the tunnel, 51 bonus car, 52-54 title logo "007"
+$0a00-$0dc0 byte sprites_40_54 export sprites_40_54.bin
+$0a00 sprite_guns
+$0b80 sprite_missile
+$0bc0 sprite_smoke
+$0c00 sprite_bridge_player
+$0c40 sprite_bridge_enemy
+$0c80 sprite_headlights
+$0cc0 sprite_bonus_car
+$0d00 sprite_logo
+$0dc0-$1000 virtual byte untouched_0dc0
+
+; ---------------------------------------------------------------- BASIC
+$1000 byte basic_start_zero
+; The game's BASIC program (007.bas), listed in 07.bas
+$1001-$9817 byte basic_program export 007bas.prg
+; BASIC's simple variables and arrays, then free memory, then the strings
+$9817-$9953 virtual byte basic_variables
+$9953-$9ff9 virtual byte untouched_9953
+$9ff9-$a001 virtual byte basic_strings
+$a001-$c000 virtual byte untouched_a001
+
+; ---------------------------------------------------------------- frame update
+; sys49152, called between the road's PRINT rows: a second frame update when turbo
+; (F1) is on, else nothing
+$c000 code turbo_frame
+; sys49155: one frame of the game. Keys M/Z steer, SPACE guns, '.' missile, ','
+; smoke; then the three enemy cars, F1/F3, the car from behind, the helicopter
+; and the weapon. Every move is a run of inx/dex.
+$c003 code frame_update
+$c004 frame_keys
+; line 4 pokes nops over $c015-$c017
+$c04f frame_car1
+$c08e frame_car2
+$c0cd frame_car3
+$c10c frame_car4
+; the car from behind in direction 5 ends the frame here: no helicopter, no weapon
+$c14b frame_car4_skip
+; rts nop nop: a 3 byte instruction cut short to rts
+$c155-$c157 byte pad_c155
+$c157 frame_helicopter
+$c188-$c18a byte pad_c188
+$c194-$c196 byte pad_c194
+; sys49561: just the weapon
+$c199 code weapon_update
+$c1c7-$c1c9 byte pad_c1c7
+$c1d3-$c1d5 byte pad_c1d3
+; Runs on every weapon_update (the test above branches here when the state is
+; not 5): headlights, crash reset, credit, joystick. Line 3 pokes
+; jsr joystick_controls into $c1de and line 39 the rts at $c1e1.
+$c1d5 frame_extras
+; the operand of the instruction that was at $c1e1 before the rts: $c018
+$c1e2-$c1e4 byte pad_c1e2
+
+; ---------------------------------------------------------------- player
+; Moves the player car 10 pixels right; at the right kerb ($fa) checks the crash reset
+$c1e4 code player_right
+$c201-$c20a virtual byte unused_c201
+; 10 pixels left; at the left kerb ($50) checks the crash reset
+$c20a code player_left
+$c227-$c230 virtual byte unused_c227
+
+; ---------------------------------------------------------------- enemy cars
+; Enemy car 1 (sprite 1), by direction in car1_direction: down 5 pixels a frame
+; and sideways; at y $c8 (direction 4: $a0) the direction becomes 0 (BASIC respawns it)
+$c230 code car1_down_left5
+$c254 code car1_down_left2
+$c278 code car1_down
+$c275-$c278 virtual byte unused_c275
+$c291-$c295 virtual byte unused_c291
+$c295 code car1_down_right2
+$c2b6 virtual byte unused_c2b6
+$c2b7 code car1_down_right5
+$c2db-$c2e0 virtual byte unused_c2db
+; Enemy car 2 (sprite 2), by car2_direction 1-5: left 5, left 3, straight, right 3,
+; right 5; ends at y $c8 (direction 5: $a0)
+$c2e0 code car2_down_left5
+$c304-$c309 virtual byte unused_c304
+$c309 code car2_down_left3
+$c32b virtual byte unused_c32b
+$c32c code car2_down
+$c345-$c349 virtual byte unused_c345
+$c349 code car2_down_right3
+$c36b virtual byte unused_c36b
+$c36c code car2_down_right5
+; Enemy car 3 (sprite 3), as car 2
+$c390 code car3_down_left5
+$c3b4 code car3_down_left3
+$c3d6 virtual byte unused_c3d6
+$c3d7 code car3_down
+$c3f0-$c3f4 virtual byte unused_c3f0
+$c3f4 code car3_down_right3
+$c416 virtual byte unused_c416
+$c417 code car3_down_right5
+; Car 4 (sprite 4) comes from behind: up 5 pixels a frame, by car4_direction 1-5:
+; right 5, right 3, straight, left 3, left 5; ends at y $50
+$c43b code car4_up_right5
+$c45f code car4_up_right3
+$c481 virtual byte unused_c481
+$c482 code car4_up
+$c49b-$c49f virtual byte unused_c49b
+$c49f code car4_up_left3
+$c4c1 virtual byte unused_c4c1
+$c4c2 code car4_up_left5
+
+; ---------------------------------------------------------------- helicopter
+; heli_state 1: the helicopter (sprite 5) flies right 5 pixels a frame
+$c4e6 code heli_fly
+; heli_state 2: the bomb (sprite 6) starts at the helicopter, state 3
+$c4f2 code heli_drop_bomb
+$c504-$c507 virtual byte unused_c504
+; heli_state 3: the bomb falls down right 5/5 until y $c8, then state 1
+$c507 code bomb_fall
+
+; ---------------------------------------------------------------- turbo
+$c52b code turbo_check
+; F1 turns turbo on, F3 off
+$c536 code turbo_keys
+$c54d code turbo_on
+$c553 code turbo_off
+
+; ---------------------------------------------------------------- weapons
+; In the tunnel (headlights_on) the headlights (sprite 5) follow the player car
+$c559 code headlights_follow
+; Fires the guns (sprite 7, pointer 40) above the player car when no weapon is busy.
+; Line 40 pokes the y ($c57c, 120).
+$c568 code fire_guns
+; weapon 1: next gun frame until pointer 45, then the weapon is free
+$c589 code guns_animate
+; Fires the missile (pointer 46); line 40 pokes the y ($c5b2, 120)
+$c59e code fire_missile
+; weapon 2: the missile flies up 5 pixels a frame until y 0
+$c5bc code missile_fly
+; Drops smoke (pointer 47) behind the player car
+$c5d5 code fire_smoke
+; an older smoke_follow that used the ',' key instead of joystick down; unused
+$c5f3 code unused_smoke_follow
+$c609 code crash_reset_check
+; With the player car back at the middle of the road (x $b4): all cars, the
+; helicopter and the weapon stopped
+$c611 code crash_reset
+; Joystick in port 2: fire guns, up missile, down smoke, left, right
+$c62e code joystick_controls
+; weapon 3: the smoke follows the player car while the joystick is held down
+$c661 code smoke_follow
+; Writes "(c) coplin software" to screen row 23 in screen codes, every frame
+$c678 code print_credit
+$c6ce-$c6d4 virtual byte untouched_c6ce
+
+; ---------------------------------------------------------------- sound
+; sys50900: explosion, noise on voice 1 (also POKEd in from DATA lines 10000-)
+$c6d4 code sound_explosion
+; same as title_scroll; unused
+$c6f9 code unused_title_scroll
+$c71e-$c738 virtual byte untouched_c71e
+; sys51000: plays the next note of the tune on voice 2 (pulse).
+; tune_pos is the offset before the next note, and BASIC starts it at 2: the
+; first pass skips note 0. A pass ends at $e9, two notes past the end of the
+; 76 note table (tune_overread).
+$c738 code tune_play
+$c795-$c7fe virtual byte untouched_c795
+; how often the tune has looped from $5c; after 3 loops it starts from the top
+$c7fe byte tune_loops
+; offset of the next note in tune_notes; 2 at the start, $e9 loops to $5c
+$c7ff byte tune_pos
+; 76 notes: freq hi, freq lo, SR; DATA lines 10020-10038, POKEd to 51200
+$c800-$c8e4 byte tune_notes export tune_notes.bin
+; power-on pattern past the table, read as the last two notes
+$c8e4-$c8ea byte tune_overread
+$c8ea-$c900 virtual byte untouched_c8ea
+$c900-$cabc virtual byte unused_c900
+
+; ---------------------------------------------------------------- title
+; sys51900: moves the title logo sprites 0-3 left 3 pixels
+$cabc code title_scroll
+$cae1-$cb20 virtual byte unused_cae1
+
+; ---------------------------------------------------------------- sprite source
+; Sprites the BASIC copies (lines 8000-8028) into the blocks at $0340 and $0840-$0dc0,
+; 63 bytes each from 52000 on, but 63 to 65 bytes apart: 13 $cb20, 14 $cb5f, 15 $cb9f,
+; 47 $cbde, 33 $cc1f, 34 $cc5f, 40-43 $cc9f, 46 $cd9f, 48-54 $cddf-$cf9e.
+; The rewrite uses the copied blocks, so it shows what the original shows.
+$cb20-$cf9e byte sprite_source
+$cf9e-$cfd0 virtual byte unused_cf9e
+
+; ---------------------------------------------------------------- shared with BASIC
+; 21 once the sprites are copied (53200); RUN again skips the copy
+$cfd0 byte sprites_copied
+$cfd1-$cff0 virtual byte unused_cfd1
+; 1: turbo (F1), frame_update runs twice per sys49152 (53232)
+$cff0 byte turbo
+; 1: in the tunnel, the headlights follow the player (53233)
+$cff1 byte headlights_on
+$cff2 virtual byte unused_cff2
+; 1: crash_reset_check resets when the player is at the middle; BASIC never sets it
+$cff3 byte crash_reset_on
+$cff4-$cff9 virtual byte unused_cff4
+; enemy car directions 1-5, 0: off the road, BASIC respawns it (53241-53243)
+$cff9 byte car1_direction
+$cffa byte car2_direction
+$cffb byte car3_direction
+; car from behind, direction 1-5, 0: gone (53244)
+$cffc byte car4_direction
+; 1 flying, 2 drop the bomb, 3 bomb falling, 0/4/5 off (53245)
+$cffd byte heli_state
+; 0 free, 1 guns, 2 missile, 3 smoke; 4 and 5 would skip frame_extras (53246)
+$cffe byte weapon_state
+$cfff virtual byte unused_cfff
+
+; ---------------------------------------------------------------- ROM
+$e000-$fd30 virtual byte untouched_e000
+$fd50-$10000 virtual byte untouched_fd50
