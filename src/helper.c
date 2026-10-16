@@ -8,7 +8,7 @@ volatile char heli_hit, heli_flash;
 volatile char motion_hold, motion_on, player_hold;
 volatile char car_direction[4];
 volatile char car_shot[4];
-volatile char crash_pending;
+volatile char crash_pending, curve_drift;
 
 // Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
 // direction or fire at a time counts
@@ -40,6 +40,10 @@ volatile char crash_pending;
 // the joystick a weapon_update, every 9.1 frames on average (1.1 a frame).
 // Here 2
 #define PLAYER_SPEED        2
+
+// The curves carry the player out, in 1/256 pixels a frame. The original moves
+// it 20 pixels twice a pass of the curve loop, about every 45 frames
+#define DRIFT_SPEED         256
 
 // Frames each gun frame shows, halved with turbo. The original shows one a
 // weapon_update: every 9.1 frames on average, mostly 2-4
@@ -159,6 +163,21 @@ static void player_frame(void)
 		player_right(step);
 	else if (k == KEY_Z || j == JOY_LEFT)
 		player_left(step);
+}
+
+// Carried out of the curve: left down to x 80, right up to x 240. The original
+// jumps 20 pixels: left not below 80, right while below 240, so up to 259, where
+// BASIC stops with ?ILLEGAL QUANTITY (in a byte it wraps to the left edge)
+static void drift_frame(void)
+{
+	static char drift_f;
+	unsigned s = drift_f + DRIFT_SPEED;
+	drift_f = s & 255;
+	char d = s >> 8, x = vic.spr_pos[0].x;
+	if (curve_drift == DRIFT_LEFT && x > 80)
+		vic.spr_pos[0].x = x > 80 + d ? x - d : 80;
+	else if (curve_drift == DRIFT_RIGHT && x < 240)
+		vic.spr_pos[0].x = x < 240 - d ? x + d : 240;
 }
 
 // The helicopter flies right; on a request it stops and drops the bomb, which
@@ -300,7 +319,11 @@ __interrupt void cars_frame(void)
 	if (!motion_on || motion_hold)
 		return;
 	if (!player_hold)
+	{
 		player_frame();
+		if (curve_drift)
+			drift_frame();
+	}
 	if (headlights_on == 1)
 		vic.spr_pos[5].x = vic.spr_pos[0].x;
 

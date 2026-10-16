@@ -255,7 +255,7 @@ Differences from the original:
   - The enemy cars and the player move in the raster IRQ (`cars_frame`), so at the same speed on every part of
     the road. The original moves them in `frame_update`, which comes every 19.8 frames on average (4 to 48):
     cars 5 pixels down (or up) and -5 to 5 across a step, the player 10 pixels a step with M and Z, and also a
-    `weapon_update` step with the joystick. Here the cars move 0.5 pixels a frame down (5 pixels every 10
+    `weapon_update` step with the joystick. Here the cars move 1 pixel a frame down (5 pixels every 10
     frames, twice the original's average) with x in proportion, in 8.8 fixed point, and the player 2 pixels a
     frame with keys or joystick (the original: 0.5 with the keys, 1.1 with the joystick); turbo doubles both. The cars leave the road at
     y 200 or 160 (car 4 at 80) with `>=`/`<=` where the original tests the exact y. The headlights follow
@@ -263,7 +263,7 @@ Differences from the original:
     game's end, off during the bonus), during the F5 pause (`motion_hold`), nor the player during the crash
     slide (`player_hold`; the original reads M and Z then too). The spawns set a car's direction to 0 first
     and last to the new one, so the IRQ never moves a half placed car.
-  - The helicopter and its bomb move in the raster IRQ too (`heli_frame`), at the cars' speed (0.5 pixels a
+  - The helicopter and its bomb move in the raster IRQ too (`heli_frame`), at the cars' speed (1 pixel a
     frame, doubled with turbo; the original: 5 pixels a `frame_update`). `helicopter_bomb` sets
     `bomb_request` where the original sets `heli_state` to 2, and the IRQ drops the bomb, so only the IRQ
     changes a flying helicopter's state; a hit stops the helicopter and takes its bomb in the IRQ as well. A
@@ -285,8 +285,15 @@ Differences from the original:
     x at y 140-180 that isn't exploding (the original: whose explosion timer is 0 or less), or the bomb within
     10 pixels at y 140-180. The original tests once a collision pass, about every 45 frames, so a car could
     drive through the player between two. The IRQ sets `crash_pending`; the main code runs the crash
-    (`crash_check`) after each row `play_rows` prints and in the collision pass where the tests were. The
+    (`crash_check`) after each row `play_rows` prints and in the collision pass where the tests were. A
+    crash after a row keeps the printer's cursor and colour (`print_save`, `print_restore`) for the next row,
+    which goes on from where that one stopped; else the road prints from the crash text down and scrolls. The
     lines of the tests keep their time. No tests during the crash slide (`player_hold`), and `crash_pending`
     is cleared when the cars start moving (start of the game, after the bonus).
+  - The curves carry the player out smoothly, in the raster IRQ (`curve_drift`, `drift_frame`): 1 pixel a
+    frame, left down to x 80 or right up to x 240, not during the crash slide. The original jumps the player
+    20 pixels twice a pass of the curve loop (lines 1026/1049 and 1126/1156), about every 45 frames, so
+    about 0.45 pixels a frame. Its right push works while x is below 240, so it can reach 259, where BASIC
+    stops with `?ILLEGAL QUANTITY` (the C port wrapped it to the left edge); here it stops at 240.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

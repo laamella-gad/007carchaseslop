@@ -382,25 +382,15 @@ static void curve_scroll(void)
 	LINE(154);
 }
 
-// The player is carried out of the curve: lines 1026 and 1049
-static void carried_left(void)
-{
-	int x = vic.spr_pos[0].x - 20;
-	vic.spr_pos[0].x = x < 80 ? 80 : x;
-}
-
-// lines 1126 and 1156
-static void carried_right(void)
-{
-	if (vic.spr_pos[0].x < 240)
-		vic.spr_pos[0].x += 20;
-}
+// The player is carried out of the curve (lines 1026, 1049, 1126 and 1156) in
+// the raster IRQ: curve_drift
 
 // Lines 1000-1060
 static char left_curve(void)
 {
 	colours(GREY);
 	curve_init();
+	curve_drift = DRIFT_LEFT;
 	LINE(1000);
 	play_rows(rows_1001, 0, 6);
 	plan_pos++;
@@ -411,7 +401,6 @@ static char left_curve(void)
 		play_rows(rows_1010, 0, 15);
 		music_on();
 		LINE(1025);
-		carried_left();
 		LINE(1026);
 		weapon_update();
 		COLLIDE(1027);
@@ -441,7 +430,6 @@ static char left_curve(void)
 			bonus();
 		LINE(1048);
 		weapon_update();
-		carried_left();
 		LINE(1049);
 		if (section_is(6))
 			bonus();
@@ -460,6 +448,7 @@ static char right_curve(void)
 {
 	colours(GREY);
 	curve_init();
+	curve_drift = DRIFT_RIGHT;
 	LINE(1100);
 	play_rows(rows_1101, 0, 6);
 	plan_pos++;
@@ -470,7 +459,6 @@ static char right_curve(void)
 		play_rows(rows_1110, 0, 15);
 		music_on();
 		LINE(1125);
-		carried_right();
 		LINE(1126);
 		COLLIDE(1127);
 
@@ -506,7 +494,6 @@ static char right_curve(void)
 		spawn_cars(CYCLES_1151, CYCLES_1152, CYCLES_1153, CYCLES_1154, 0);
 		music_on();
 		helicopter_bomb(140, CYCLES_1155);
-		carried_right();
 		LINE(1156);
 		COLLIDE(1157);
 		LINE(1160);
@@ -623,6 +610,8 @@ void game(void)
 	char next = NEXT_COUNTRY;
 	for (;;)
 	{
+		// only the curves carry the player
+		curve_drift = DRIFT_NONE;
 		switch (next)
 		{
 		case NEXT_COUNTRY: next = country(1); break;

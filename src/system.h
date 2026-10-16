@@ -76,6 +76,11 @@ void print_number(long n);
 // BASIC's ',' in print: on to the next 10 column zone
 void print_comma(void);
 
+// The cursor, colour and reverse, kept and put back around a print that comes
+// between two rows that go on from each other
+void print_save(void);
+void print_restore(void);
+
 // The next key in the keyboard buffer (GETIN), 0 if none
 char get_key(void);
 

@@ -25,6 +25,11 @@ extern volatile char car_shot[4];
 // Set by the IRQ when an enemy car or the bomb hits the player; the main code
 // runs the crash (crash_check)
 extern volatile char crash_pending;
+// In a curve the player is carried out of it, left or right, in the IRQ
+extern volatile char curve_drift;
+#define DRIFT_NONE      0
+#define DRIFT_LEFT      1
+#define DRIFT_RIGHT     2
 // Set by the main code for a flying helicopter to drop its bomb; the IRQ does it
 extern volatile char bomb_request;
 // Set during the F5 pause: the cars, the player and the missile stop

@@ -189,6 +189,24 @@ void print_number(long n)
 	put(PET_RIGHT);
 }
 
+static char saved_row, saved_column, saved_ink, saved_reverse;
+
+void print_save(void)
+{
+	saved_row = row;
+	saved_column = column;
+	saved_ink = ink;
+	saved_reverse = reverse;
+}
+
+void print_restore(void)
+{
+	row = saved_row;
+	column = saved_column;
+	ink = saved_ink;
+	reverse = saved_reverse;
+}
+
 void print_comma(void)
 {
 	char n = 10 - column % 10;

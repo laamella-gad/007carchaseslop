@@ -30,7 +30,13 @@ void play_rows(const Row *rows, char from, char to)
 			put(PET_RETURN);
 		pace(r->cycles);
 		// a crash goes on after the row it happens in, not at the next
-		// collision pass
-		crash_check();
+		// collision pass. Its prints move the cursor, and the next row goes
+		// on from this one
+		if (crash_pending)
+		{
+			print_save();
+			crash_check();
+			print_restore();
+		}
 	}
 }
