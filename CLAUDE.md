@@ -4,44 +4,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Reverse-engineering workspace for "007 Car Chase" (c) Coplin Software, a Commodore 64 game. No git, no tests. Original disk image is `007CARCH.d64`; everything else was extracted from it or derived from those extracts.
+"007 Car Chase" (c) 1985 Coplin Software, a C64 game: a Deflower disassembly of the original and a C rewrite for
+oscar64 that plays at the original's speed, plus fixes. `NOTES.md` is the reference: memory map, BASIC/ML
+mailbox, timing, the original's bugs, and **every difference from the original**. Keep it up to date with each
+change.
 
-## Files
-
-- `007CARCH.d64` — original disk. Contains three PRGs: `007 car chase`, `007.bas`, `007`.
-- `007 car chase` — tokenized BASIC loader at $0801. Shows title screen, sets BASIC start to $1000 (`poke 44,16`), then stuffs the keyboard buffer to `LOAD"007.BAS",8` + `RUN`.
-- `007.bas` — tokenized main game BASIC at $1001 (`file` misreports it as C16/Plus4 because of the load address; it is C64 BASIC V2).
-- `07.bas` — `petcat` text listing of `007.bas`. Read/grep this, not the binary.
-- `007` — machine-code PRG loaded at $C000 (`load"007",8,1` on line 0 of `007.bas`). Original from disk.
-- `007.prg` — Makefile output name; currently a 4096-byte file that differs from `007` in ~358 bytes. Treat `007` as the reference binary.
-- `code.asm` — **raw copy-paste of a WFDis (web 6502 disassembler) session**, not valid 64tass source. It begins with the WFDis UI help text, has no `* = $c000`, uses undefined symbolic names like `d002_vSprite1X`, and data regions are bare hex rows rather than `.byte`. Needs cleanup before it can assemble.
-- `1.bin`, `2.bin` — small raw dumps (screen-code / sprite-like data).
-- `vice-snapshot-*.vsf` — VICE snapshot of the running game.
+The original is a BASIC V2 program (`007.bas`, listing `07.bas`, grep that) driving a machine code helper at
+$C000 (`007`). Disk image `007CARCH.d64`. `007.prg`, `code.asm`, `1.bin`, `2.bin` are an older unused attempt.
 
 ## Commands
 
 ```sh
-make                      # 64tass -C -a -B -i code.asm -o 007.prg  (fails today: see code.asm note)
-petcat -2 -- 007.bas      # detokenize BASIC (same as 07.bas)
-petcat -w2 -l 1001 -o 007.bas -- 07.bas   # retokenize; byte-identical round-trip (must load at $1001)
-c1541 -attach 007CARCH.d64 -list  # list disk; -read / -write to extract/replace files
-x64sc 007CARCH.d64        # run in VICE (LOAD"*",8 then RUN)
+make                         # src/ -> build/007carchase_raw.prg -> crunched 007carchase.prg
+make run                     # VICE
+make timing                  # tools/c64time.c times the original's BASIC lines -> build/timing.txt (minutes)
+make text                    # tools/bas2c.py: 007.bas + timing -> src/text.c, src/text.h (generated, don't edit)
+deflower --verify 007.flo    # disassembly -> out/007.asm and the .bin exports (must stay 0 differ, 0 gaps)
+petcat -2 -- 007.bas         # BASIC listing
 ```
 
-To verify a rebuilt binary, `cmp` it against `007` (both carry a 2-byte $C000 load address header).
-The `demo.prg` Makefile target is leftover boilerplate; its sources do not exist.
+`make` also runs `tools/branchcheck.py` on the oscar64 listing and fails if a branch or jump lands mid
+instruction. That catches an oscar64 bug (still present in 1.32.273): sign extending a `signed char` to `int`
+can produce a bad `BPL`. Prefer `int` over `signed char` where it gets widened.
 
-## Architecture
+No tests. The user plays and tests in VICE; build only, and don't drive VICE from scripts.
 
-The game is a BASIC program driving a machine-code helper library. Game logic (collision checks, scoring, lives, level flow) lives in BASIC; the ML at $C000 does joystick/keyboard reading, sprite movement, scrolling and sound.
+## Architecture of the rewrite
 
-ML entry points called from BASIC (`grep -i sys 07.bas`):
-- `SYS 49152` ($C000) → `jmp $C52B`, init/main routine
-- `SYS 49155` ($C003) — per-frame routine: reads key in $C5, then dispatches on state bytes $CFF9–$CFFE to sprite-movement subroutines
-- `SYS 49561` ($C199), `SYS 50900` ($C6D4), `SYS 51000` ($C738), `SYS 51900` ($CABC) — other helpers
+`src/main.c` includes everything; each header ends with `#pragma compile("x.c")`. One file per part of the
+original, with comments naming the BASIC lines they port:
 
-BASIC also self-modifies the ML with POKEs (e.g. `poke49173,234` ×3 NOPs out code at $C015; `poke49630..49633` patches $C1DE–$C1E1), so the binary on disk is not exactly what runs.
+- `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` has the PETSCII
+  printer that mimics the KERNAL, keys, INPUT and pacing. `sound.c` has the sounds.
+- `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
+  `bas2c.py` turns runs of them into `rows_N` tables of `{text, helper ops, cycles}` that `play_rows` replays.
+- `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
+  `hiscore.c`.
 
-**Shared state block $CFD0–$CFFF** (53200–53247) is the BASIC↔ML mailbox. BASIC PEEK/POKEs these by decimal address, ML uses `$cffX`. Key ones: $CFF9–$CFFE (direction/state flags, 53241–53246), $CFF0 (53232, used in score calc at line 18), $CFD0 (53200). When tracing behavior, correlate decimal addresses in `07.bas` with hex in `code.asm`.
+Pacing: every ported BASIC line ends with `LINE(n)` = `pace(CYCLES_n)`, the line's measured PAL cycles from
+`build/timing.txt`, waited on with CIA 2 timer B. Call `pace_restart()` after waiting for a key. Lines the timing
+run never reached are 0 or estimated (listed in NOTES.md).
 
-Other conventions in BASIC: `v=53248` (VIC base, so `v+N` = VIC registers); sprite pointers at 2040–2047; sprite shapes copied from ML data at 52000+ into 832 (`gosub 8000`).
+Memory: VIC bank 0 as in the original (screen $0400, ROM charset). Sprites are blocks 40-59 at $0a00-$0eff
+(their own section, `#embed` of the `.bin` files from Deflower's exports), code and data from $0f00 to $a000.
+
+oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs parentheses, `#embed` emits its
+own trailing comma, and token pasting inside a nested macro call fails.
