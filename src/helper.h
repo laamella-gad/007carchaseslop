@@ -15,6 +15,11 @@ extern char weapon_state;       // 53246: 0 free, 1 guns, 2 missile, 3 smoke
 #define WEAPON_MISSILE  2
 #define WEAPON_SMOKE    3
 
+// Set when the missile hits the helicopter; the collision pass scores it
+extern char heli_hit;
+// Frames left of the helicopter's explosion flash; 0 when none
+extern volatile char heli_flash;
+
 // sys49155: keys, cars, F1/F3, the car from behind, the helicopter, the weapon
 void frame_update(void);
 
@@ -26,6 +31,9 @@ void weapon_update(void);
 
 // sys51900: the title logo 3 pixels left
 void title_scroll(void);
+
+// From the raster IRQ, once a frame: the helicopter's explosion flash
+__interrupt void heli_flash_frame(void);
 
 #pragma compile("helper.c")
 

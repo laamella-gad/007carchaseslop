@@ -240,5 +240,12 @@ Differences from the original:
     the tune stops with `sound_off()`, during the crash (the original plays none there, and the IRQ would turn
     the fading volume up) and during the F5 pause. The IRQ goes to the KERNAL's for its CIA interrupt, so the
     keyboard scan stays at 60 Hz.
+  - The missile can hit the helicopter. The original tests it once a collision pass (lines 53-57), when the
+    missile has moved 35-50 pixels since the last test, so it almost never sees it in the 15 pixel high window
+    (y 50-70); on a hit its 5 flashes take no frame between the shapes and can't be seen, and the helicopter
+    flies on. Now `weapon_update` tests the same window at each 5 pixel step (only for a flying helicopter, not
+    the tunnel's headlights). A hit takes the missile and any falling bomb off the screen and stops the
+    helicopter; the raster IRQ flashes it for 40 frames, then it's gone until the next country road (or the
+    plan's helicopter). The collision pass scores the 2000 and plays one explosion, paced like line 57.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

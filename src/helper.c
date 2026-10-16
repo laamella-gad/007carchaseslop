@@ -2,6 +2,8 @@
 #include "system.h"
 
 char turbo, headlights_on, heli_state, weapon_state;
+char heli_hit;
+volatile char heli_flash;
 char car_direction[4];
 
 // Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
@@ -14,6 +16,10 @@ char car_direction[4];
 
 #define GUNS_Y      120     // line 40 pokes it into fire_guns and fire_missile
 #define SMOKE_Y     180
+
+// The helicopter's explosion: frames of the flash, explosion and helicopter
+// shapes switching every 4
+#define HELI_FLASH_FRAMES   40
 
 // The player stops at the kerbs. The original stops only at exactly these x,
 // so from an x past a kerb (after the crash slide) the car walks off the road
@@ -126,6 +132,53 @@ static void joystick_controls(void)
 		player_right();
 }
 
+// The missile against the helicopter at each 5 pixel step. The original tests
+// only once a collision pass, when the missile has moved 35-50 pixels since the
+// last one, so it almost never finds it in the 15 pixel high window
+static void missile_hit(void)
+{
+	char y = vic.spr_pos[7].y;
+	if (!(y > 50 && y < 70))
+		return;
+	// not the headlights in the tunnel, nor a helicopter that's exploding
+	if (heli_state < 1 || heli_state > 3 || sprite_pointers[5] != SPR_HELICOPTER)
+		return;
+	int x = vic.spr_pos[7].x, heli = vic.spr_pos[5].x;
+	if (!(x > heli - 15 && x < heli + 15))
+		return;
+
+	// the missile is gone, the helicopter stops and explodes, its bomb with it
+	vic.spr_pos[7].x = 0;
+	vic.spr_pos[7].y = 0;
+	weapon_state = WEAPON_FREE;
+	heli_state = 0;
+	vic.spr_pos[6].x = 0;
+	vic.spr_pos[6].y = 0;
+	heli_hit = 1;
+	heli_flash = HELI_FLASH_FRAMES;
+}
+
+__interrupt void heli_flash_frame(void)
+{
+	if (!heli_flash)
+		return;
+	// the tunnel's headlights take over sprite 5
+	if (headlights_on)
+	{
+		heli_flash = 0;
+		return;
+	}
+	heli_flash--;
+	if (heli_flash)
+		sprite_pointers[5] = heli_flash & 4 ? SPR_EXPLOSION : SPR_HELICOPTER;
+	else
+	{
+		// off the screen until the next country road
+		vic.spr_pos[5].x = 0;
+		sprite_pointers[5] = SPR_HELICOPTER;
+	}
+}
+
 void weapon_update(void)
 {
 	if (weapon_state == WEAPON_GUNS)
@@ -141,6 +194,8 @@ void weapon_update(void)
 		vic.spr_pos[7].y -= 5;
 		if (vic.spr_pos[7].y == 0)
 			weapon_state = WEAPON_FREE;
+		else
+			missile_hit();
 	}
 	if (weapon_state == WEAPON_SMOKE)
 	{

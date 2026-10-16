@@ -60,6 +60,8 @@ void spawn_helicopter(void)
 	sprite_pointers[5] = SPR_HELICOPTER;
 	vic.spr_pos[5].x = 80;
 	vic.spr_pos[5].y = 55;
+	heli_flash = 0;
+	heli_hit = 0;
 	heli_state = 1;
 	LINE(115);
 }
@@ -274,29 +276,20 @@ static void keys_and_helicopter(void)
 		pause();
 	LINE(52);
 
-	char y = vic.spr_pos[7].y;
+	// The missile tests itself at each step (weapon_update); the original tests
+	// it here and the helicopter flashes too fast to see and flies on. Now
+	// the raster IRQ flashes it and it's gone until the next country road
 	LINE(53);
-	if (!(y > 50 && y < 70))
+	if (!heli_hit)
 	{
 		LINE(54);
 		return;
 	}
-	int x = vic.spr_pos[7].x, heli = vic.spr_pos[5].x;
+	heli_hit = 0;
 	LINE(55);
-	if (!(x > heli - 15 && x < heli + 15))
-	{
-		LINE(56);
-		return;
-	}
-	// the helicopter flashes 5 times; it flies on
-	for (char n = 0; n < 5; n++)
-	{
-		sprite_pointers[5] = SPR_EXPLOSION;
-		sound_explosion();
-		sprite_pointers[5] = SPR_HELICOPTER;
-		pace(CYCLES_57 / 5);
-	}
+	sound_explosion();
 	score += 2000;
+	LINE(57);
 }
 
 void collide(void)
