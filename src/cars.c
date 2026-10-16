@@ -97,6 +97,10 @@ void helicopter_bomb(char x, unsigned long cycles)
 // Lines 6000-6099
 void crash_skid(void)
 {
+	// no tune during the crash (the original plays none), so it doesn't turn
+	// the fading volume up again
+	music_off();
+
 	// Back and forth between the enemy car and the player's, 20 pixels left
 	// each time, until the left side of the road. The original stops with
 	// ?ILLEGAL QUANTITY when x goes below 0; here it stops at 0
@@ -253,6 +257,7 @@ static void pause(void)
 {
 	// line 58: a delay so that the F5 that paused doesn't end the pause.
 	// Not measured (the timing run never pauses): about 1350 cycles a loop
+	music_off();
 	pace(1001 * 1350ul);
 	while (last_key() != KEY_F5)
 		;

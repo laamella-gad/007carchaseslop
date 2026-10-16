@@ -233,5 +233,12 @@ Differences from the original:
   - Smoke stays while ',' is held down, as with the joystick down.
   - The kerbs stop the player at or before $50 and $fa from any x, and a car past a kerb (after the crash
     slide) can only move back onto the road.
+- Gameplay changes:
+  - The tune plays from a raster IRQ (line 251), a note every 6 frames, where the original plays a note per
+    `sys51000`, so at the speed of the BASIC around it: about 5.8 frames a note on the title, 6.6 on the high
+    score table, slower and uneven during the game. `music_on()` stands where the original calls `sys51000`;
+    the tune stops with `sound_off()`, during the crash (the original plays none there, and the IRQ would turn
+    the fading volume up) and during the F5 pause. The IRQ goes to the KERNAL's for its CIA interrupt, so the
+    keyboard scan stays at 60 Hz.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

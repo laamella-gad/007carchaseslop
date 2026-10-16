@@ -17,7 +17,7 @@ void play_rows(const Row *rows, char from, char to)
 		const Row *r = rows + i;
 		char ops = r->ops;
 		if (ops & OP_TUNE)
-			tune_play();
+			music_on();
 		if (ops & OP_FRAME)
 			frame_update();
 		if (ops & OP_TURBO)

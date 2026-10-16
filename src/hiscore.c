@@ -79,11 +79,9 @@ void hiscore(void)
 	pace_restart();
 	tune_restart();
 	LINE(20057);
-	for (char t = 0; t < 77; t++)
-	{
-		tune_play();
-		pace(CYCLES_20058 / 77);
-	}
+	// line 20058: 77 notes of the tune
+	music_on();
+	pace(CYCLES_20058);
 	sound_off();
 
 	// the name is typed over the entry's name column, cleared first (the

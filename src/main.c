@@ -29,6 +29,7 @@ __export const char sprite_data[] = {
 int main(void)
 {
 	system_init();
+	music_init();
 
 	// lines 2-4
 	vic.color_border = BLACK;

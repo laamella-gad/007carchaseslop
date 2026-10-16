@@ -5,7 +5,8 @@
 #include "sound.h"
 #include "system.h"
 
-// One pass of the title loop, line 11070: get, sys51900, sys51000 and a delay.
+// One pass of the title loop, line 11070: get, sys51900, sys51000 and a delay
+// (the tune plays from the raster IRQ here).
 // tools/c64time.c counts the whole wait as one pass of the line; 178 waits had
 // 669 title_scroll calls in all
 #define TITLE_LOOP_CYCLES   (CYCLES_11070 * 178 / 669)
@@ -151,11 +152,11 @@ void title(void)
 		while (get_key())
 			;
 		pace_restart();
+		music_on();
 		do
 		{
 			key = get_key();
 			title_scroll();
-			tune_play();
 			pace(TITLE_LOOP_CYCLES);
 		} while (!key);
 

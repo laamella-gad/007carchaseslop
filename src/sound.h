@@ -6,13 +6,20 @@
 // sys50900: noise on voice 1
 void sound_explosion(void);
 
-// sys51000: the next note of the tune on voice 2
-void tune_play(void);
+// The tune on voice 2 (sys51000 in the original, one note per call) is played
+// by a raster IRQ, a note every TUNE_FRAMES frames, while it is on
+void music_init(void);
+
+// Where the original calls sys51000: the tune goes on (from where it was)
+void music_on(void);
+
+// The tune stops after its current note; the note sounds on
+void music_off(void);
 
 // poke51199,2:poke51198,2: the tune from the top
 void tune_restart(void);
 
-// poke54296,0
+// poke54296,0, and the tune off
 void sound_off(void);
 
 // Line 6003: one step of the crash noise, volume v

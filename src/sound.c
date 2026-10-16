@@ -12,6 +12,16 @@ static const char tune_notes[228] = {
 // The offset of the next note; passes through the tune, from 2
 static char tune_pos, tune_loops = 2;
 
+// The original plays a note per sys51000, so its tempo is the speed of the
+// BASIC around it: about 5.8 frames a note on the title, 6.6 on the high score
+// table, and slower and uneven in the game
+#define TUNE_FRAMES 12
+// Below the screen
+#define MUSIC_LINE  251
+
+static volatile char music_playing;
+static char music_frames;
+
 void sound_explosion(void)
 {
 	sid.fmodevol = 0;
@@ -23,8 +33,13 @@ void sound_explosion(void)
 	sid.voices[0].freq = 0x28c8;
 }
 
-void tune_play(void)
+// Each frame, from the raster IRQ
+static __interrupt void music_frame(void)
 {
+	if (!music_playing || --music_frames)
+		return;
+	music_frames = TUNE_FRAMES;
+
 	sid.voices[1].attdec = 0;
 	sid.voices[1].ctrl = 0;
 	sid.fmodevol = 15;
@@ -51,6 +66,46 @@ void tune_play(void)
 	}
 }
 
+// The raster IRQ plays the tune; the KERNAL's 60 Hz CIA IRQ still scans the
+// keyboard
+__asm music_irq
+{
+	lda $d019
+	and #$01
+	beq music_kernal
+	sta $d019
+	jsr music_frame
+	jmp $ea81
+music_kernal:
+	jmp $ea31
+}
+
+void music_init(void)
+{
+	__asm { sei }
+	*(void **)0x0314 = music_irq;
+	vic.raster = MUSIC_LINE;
+	vic.ctrl1 &= 0x7f;
+	vic.intr_ctrl = 0xff;
+	vic.intr_enable = 1;
+	__asm { cli }
+}
+
+void music_on(void)
+{
+	// the first note on the next frame, as the original plays it at once
+	if (!music_playing)
+	{
+		music_frames = 1;
+		music_playing = 1;
+	}
+}
+
+void music_off(void)
+{
+	music_playing = 0;
+}
+
 void tune_restart(void)
 {
 	tune_pos = 0;
@@ -59,6 +114,7 @@ void tune_restart(void)
 
 void sound_off(void)
 {
+	music_off();
 	sid.fmodevol = 0;
 }
 

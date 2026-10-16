@@ -76,7 +76,7 @@ static char country(char setup)
 	{
 		play_rows(rows_200, 0, 15);
 		// a sign before the bridge
-		tune_play();
+		music_on();
 		frame_update();
 		if (section_is(3))
 		{
@@ -124,7 +124,7 @@ static char country(char setup)
 			put(PET_RETURN);
 		}
 		LINE(239);
-		tune_play();
+		music_on();
 		frame_update();
 		if (section_is(3))
 		{
@@ -162,7 +162,7 @@ static char city(void)
 
 	for (;;)
 	{
-		tune_play();
+		music_on();
 		put(c1);
 		put(PET_RETURN);
 		print(t400);
@@ -173,7 +173,7 @@ static char city(void)
 		weapon_update();
 		put(c2);
 		put(PET_RETURN);
-		tune_play();
+		music_on();
 		LINE(419);
 		play_rows(rows_420, 0, 15);
 		COLLIDE(449);
@@ -275,7 +275,7 @@ static char tunnel(void)
 	frame_update();
 	LINE(507);
 	play_rows(rows_510, 0, 7);
-	tune_play();
+	music_on();
 	frame_update();
 	LINE(518);
 	play_rows(rows_520, 0, 9);
@@ -299,7 +299,7 @@ static char tunnel(void)
 	for (;;)
 	{
 		weapon_update();
-		tune_play();
+		music_on();
 		sprite_pointers[5] = SPR_HEADLIGHTS;
 		LINE(815);
 		COLLIDE(819);
@@ -329,7 +329,7 @@ static char tunnel(void)
 		if (section_is(6))
 			bonus();
 		LINE(838);
-		tune_play();
+		music_on();
 		sprite_pointers[5] = SPR_HEADLIGHTS;
 		LINE(840);
 		frame_update();
@@ -409,7 +409,7 @@ static char left_curve(void)
 	for (;;)
 	{
 		play_rows(rows_1010, 0, 15);
-		tune_play();
+		music_on();
 		LINE(1025);
 		carried_left();
 		LINE(1026);
@@ -448,7 +448,7 @@ static char left_curve(void)
 		LINE(1050);
 		frame_update();
 		spawn_cars(CYCLES_1051, CYCLES_1052, CYCLES_1053, CYCLES_1054, 1);
-		tune_play();
+		music_on();
 		helicopter_bomb(140, CYCLES_1055);
 		COLLIDE(1056);
 		LINE(1060);
@@ -468,7 +468,7 @@ static char right_curve(void)
 	for (;;)
 	{
 		play_rows(rows_1110, 0, 15);
-		tune_play();
+		music_on();
 		LINE(1125);
 		carried_right();
 		LINE(1126);
@@ -504,7 +504,7 @@ static char right_curve(void)
 		LINE(1150);
 		frame_update();
 		spawn_cars(CYCLES_1151, CYCLES_1152, CYCLES_1153, CYCLES_1154, 0);
-		tune_play();
+		music_on();
 		helicopter_bomb(140, CYCLES_1155);
 		carried_right();
 		LINE(1156);
@@ -544,7 +544,7 @@ static char bridge(void)
 		play_rows(rows_2200, 0, 15);
 		weapon_update();
 		collide();
-		tune_play();
+		music_on();
 		LINE(2215);
 		if (lives == -1)
 			return NEXT_GAME_OVER;
@@ -559,7 +559,7 @@ static char bridge(void)
 			distance = 0;
 			return NEXT_COUNTRY;
 		}
-		tune_play();
+		music_on();
 		LINE(2239);
 		water();
 		LINE(2240);
