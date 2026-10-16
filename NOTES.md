@@ -215,7 +215,7 @@ $0a00-$0eff: 40-54 where the original has them, and its blocks 13-15 and 33-34 (
 
 Compiler bug: oscar64 1.32.271 at `-O2` turned the sign extension `AND #$80 / BPL +2 / LDA #$ff / STA` into
 `TYA` (Y was $ff) after placing the branch, so the `BPL` landed in the middle of the `STA`. That was in
-`plan_new` with `signed char x, y`, and still happens with oscar64 at commit 2357b11 (October 2026). When a plan was drawn, the game ran into garbage and ended at READY. Those
+`plan_new` with `signed char x, y`, and still happens with oscar64 at commit 2357b11 (October 2026); fixed in commit a92fd0c ("Fix size reduction breaking branch offset"). When a plan was drawn, the game ran into garbage and ended at READY. Those
 variables are `int` now, and `make` runs `tools/branchcheck.py` on the listing, which fails the build if any
 branch or jump misses an instruction start.
 

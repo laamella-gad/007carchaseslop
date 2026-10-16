@@ -24,8 +24,8 @@ petcat -2 -- 007.bas         # BASIC listing
 ```
 
 `make` also runs `tools/branchcheck.py` on the oscar64 listing and fails if a branch or jump lands mid
-instruction. That catches an oscar64 bug (still present in 1.32.273): sign extending a `signed char` to `int`
-can produce a bad `BPL`. Prefer `int` over `signed char` where it gets widened.
+instruction. That catches an oscar64 bug (in 1.32.273 up to commit 2357b11, fixed in a92fd0c): sign extending
+a `signed char` to `int` could produce a bad `BPL`.
 
 No tests. The user plays and tests in VICE; build only, and don't drive VICE from scripts.
 
