@@ -269,6 +269,17 @@ Differences from the original:
     changes a flying helicopter's state; a hit stops the helicopter and takes its bomb in the IRQ as well. A
     landed bomb (y over 195) goes off the screen at once, where the original leaves it at y 200 until the
     collision pass (line 37) moves it. The original's bug that skips the helicopter while car 4 goes left 5
-    is gone; the weapon still skips that frame.
+    is gone.
+  - The weapon is in the raster IRQ too (`weapon_frame`): fire from the keys and the joystick, the gun frames
+    (4 frames each, 2 with turbo; the original shows one a `weapon_update`, every 9.1 frames on average,
+    mostly 2-4), and the smoke following the player while held. The hits on the enemy cars (lines 20-35:
+    within 18 pixels of the player in x, y 110-140 for the guns, 175-200 for the smoke) go with it
+    (`weapon_hits`): the original tests them once a collision pass, about every 45 frames, so the shorter
+    gun fire would mostly miss it. The IRQ shows the explosion and sets `car_shot`; the next collision pass
+    scores it, plays the sound and starts the explosion timer (`shots()`, right after line 6), and a shot car
+    isn't a crash meanwhile. A car that's already exploding can't be hit again; in the original the guns hit
+    it again on the next pass, for another 50 points. A spawn clears the car's `car_shot`. `frame_update`
+    and `weapon_update` are left with the F1/F3 keys and the credit; the original's frame that ended early
+    while car 4 goes left 5 is gone with them.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

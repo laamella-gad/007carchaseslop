@@ -22,11 +22,12 @@ static const char car_colours[3] = {RED, CYAN, GREEN};
 static const unsigned long spawn_cycles[3] = {CYCLES_101, CYCLES_102, CYCLES_103};
 
 // The direction goes to 0 first and is set last, so the IRQ doesn't move a car
-// that's half placed
+// that's half placed; a hit on the car before goes too
 
 void spawn_car(char car)
 {
 	car_direction[car - 1] = 0;
+	car_shot[car - 1] = 0;
 	vic.spr_pos[car].x = 180;
 	vic.spr_pos[car].y = 80;
 	sprite_pointers[car] = enemy_sprite;
@@ -52,6 +53,7 @@ void spawn_car4(void)
 {
 	char direction = rnd(5) + 1;
 	car_direction[3] = 0;
+	car_shot[3] = 0;
 	sprite_pointers[4] = player_sprite;
 	vic.spr_color[4] = rnd(10);
 	LINE(105);
@@ -80,6 +82,7 @@ void spawn_car_bridge(char car)
 {
 	// no colour: the car is still yellow from its explosion
 	car_direction[car - 1] = 0;
+	car_shot[car - 1] = 0;
 	vic.spr_pos[car].x = 180;
 	vic.spr_pos[car].y = 80;
 	sprite_pointers[car] = enemy_sprite;
@@ -91,6 +94,7 @@ void spawn_car4_bridge(void)
 {
 	char direction = rnd(2) + 1;
 	car_direction[3] = 0;
+	car_shot[3] = 0;
 	sprite_pointers[4] = player_sprite;
 	vic.spr_color[4] = rnd(10);
 	LINE(125);
@@ -212,30 +216,33 @@ static const unsigned long car_cycles[4][4] = {
 	{CYCLES_32, CYCLES_33, CYCLES_34, CYCLES_35},
 };
 
+// The guns and the smoke hit in the raster IRQ (weapon_hits); a car hit there
+// isn't a crash
 static void car_check(char car)
 {
 	const unsigned long *c = car_cycles[car - 1];
 	char y = vic.spr_pos[car].y;
 
 	pace(c[0]);
-	if (y > 110 && y < 140 && weapon_state == WEAPON_GUNS)
-	{
-		car_explode(car);
-		return;
-	}
 	pace(c[1]);
-	if (y > 175 && y < 200 && weapon_state == WEAPON_SMOKE)
-	{
-		car_explode(car);
-		return;
-	}
 	pace(c[2]);
-	if (y > 140 && y < 180 && explosion_timer[car - 1] <= 0)
+	if (y > 140 && y < 180 && explosion_timer[car - 1] <= 0 && !car_shot[car - 1])
 	{
 		crash();
 		return;
 	}
 	pace(c[3]);
+}
+
+// The cars the guns or the smoke hit since the last pass explode for points
+static void shots(void)
+{
+	for (char car = 1; car <= 4; car++)
+		if (car_shot[car - 1])
+		{
+			car_explode(car);
+			car_shot[car - 1] = 0;
+		}
 }
 
 // Lines 45-49: explosions off the road after one collision pass
@@ -323,6 +330,7 @@ void collide(void)
 		if (explosion_timer[i] > -100)
 			explosion_timer[i]--;
 	explosions_end();
+	shots();
 	LINE(6);
 
 	// lines 6-9: each enemy car level with the player

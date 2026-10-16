@@ -19,6 +19,9 @@ extern volatile char weapon_state; // 53246: 0 free, 1 guns, 2 missile, 3 smoke
 extern volatile char heli_hit;
 // Frames left of the helicopter's explosion flash; 0 when none
 extern volatile char heli_flash;
+// Set by the IRQ for an enemy car 1-4 the guns or the smoke hit; it shows the
+// explosion, the collision pass scores it
+extern volatile char car_shot[4];
 // Set by the main code for a flying helicopter to drop its bomb; the IRQ does it
 extern volatile char bomb_request;
 // Set during the F5 pause: the cars, the player and the missile stop
@@ -42,7 +45,7 @@ void weapon_update(void);
 void title_scroll(void);
 
 // From the raster IRQ, once a frame: the cars, the player, the helicopter and
-// its bomb, the missile, and
+// its bomb, the weapon, and
 // the helicopter's explosion flash
 __interrupt void cars_frame(void);
 __interrupt void missile_frame(void);

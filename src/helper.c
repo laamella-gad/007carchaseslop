@@ -7,6 +7,7 @@ volatile char weapon_state;
 volatile char heli_hit, heli_flash;
 volatile char motion_hold, motion_on, player_hold;
 volatile char car_direction[4];
+volatile char car_shot[4];
 
 // Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
 // direction or fire at a time counts
@@ -39,6 +40,10 @@ volatile char car_direction[4];
 // Here 2
 #define PLAYER_SPEED        2
 
+// Frames each gun frame shows, halved with turbo. The original shows one a
+// weapon_update: every 9.1 frames on average, mostly 2-4
+#define GUN_FRAMES          4
+
 // The player stops at the kerbs. The original stops only at exactly these x,
 // so from an x past a kerb (after the crash slide) the car walks off the road
 #define KERB_LEFT   0x50
@@ -62,10 +67,13 @@ static void player_left(char step)
 		vic.spr_pos[0].x = x > KERB_LEFT + step ? x - step : KERB_LEFT;
 }
 
+static char gun_frames;
+
 static void fire_guns(void)
 {
 	if (weapon_state == WEAPON_FREE)
 	{
+		gun_frames = 0;
 		sprite_pointers[7] = SPR_GUNS;
 		vic.spr_pos[7].x = vic.spr_pos[0].x;
 		vic.spr_pos[7].y = GUNS_Y;
@@ -195,6 +203,68 @@ static void heli_frame(unsigned step_speed)
 	}
 }
 
+// The guns or the smoke against the enemy cars, from line 6-35 of the
+// original's collision pass: a car within 18 pixels of the player in x, at y
+// 110-140 for the guns or 175-200 for the smoke. The original tests once a
+// pass, every 45 frames or so, and may hit an exploding car again
+static void weapon_hits(void)
+{
+	char state = weapon_state;
+	if (state != WEAPON_GUNS && state != WEAPON_SMOKE)
+		return;
+	char low = state == WEAPON_GUNS ? 110 : 175, high = state == WEAPON_GUNS ? 140 : 200;
+	int x = vic.spr_pos[0].x;
+	for (char car = 1; car <= 4; car++)
+	{
+		if (car_shot[car - 1] || sprite_pointers[car] == SPR_EXPLOSION)
+			continue;
+		int cx = vic.spr_pos[car].x;
+		char y = vic.spr_pos[car].y;
+		if (cx > x - 18 && cx < x + 18 && y > low && y < high)
+		{
+			sprite_pointers[car] = SPR_EXPLOSION;
+			vic.spr_color[car] = YELLOW;
+			car_shot[car - 1] = 1;
+		}
+	}
+}
+
+// The weapon: fire from the keys and the joystick, the gun frames, the smoke
+// following the player while held, and the hits
+static void weapon_frame(void)
+{
+	char k = last_key(), j = cia1.pra;
+	if (k == KEY_SPACE || j == JOY_FIRE)
+		fire_guns();
+	if (k == KEY_PERIOD || j == JOY_UP)
+		fire_missile();
+	if (k == KEY_COMMA || j == JOY_DOWN)
+		fire_smoke();
+
+	if (weapon_state == WEAPON_GUNS && ++gun_frames >= (turbo ? GUN_FRAMES / 2 : GUN_FRAMES))
+	{
+		// the next gun frame, up to the empty one
+		gun_frames = 0;
+		if (sprite_pointers[7] == SPR_GUNS_END)
+			weapon_state = WEAPON_FREE;
+		else
+			sprite_pointers[7]++;
+	}
+	if (weapon_state == WEAPON_SMOKE)
+	{
+		// the smoke stays while the joystick is held down, or the ',' key (the
+		// original tests only the joystick, so smoke from the key ends on the
+		// next frame)
+		vic.spr_pos[7].x = vic.spr_pos[0].x;
+		if (j != JOY_DOWN && k != KEY_COMMA)
+		{
+			vic.spr_pos[7].x = 0;
+			weapon_state = WEAPON_FREE;
+		}
+	}
+	weapon_hits();
+}
+
 // The original moves the cars and the player in frame_update (and the joystick
 // in weapon_update), so at the speed of the BASIC that calls them
 __interrupt void cars_frame(void)
@@ -216,6 +286,7 @@ __interrupt void cars_frame(void)
 			car_direction[3] = 0;
 	}
 	heli_frame(turbo ? 2 * CAR_SPEED : CAR_SPEED);
+	weapon_frame();
 }
 
 static void turbo_keys(void)
@@ -238,16 +309,6 @@ static void print_credit(void)
 			screen[23 * 40 + 5 + i] = credit[i];
 }
 
-static void joystick_controls(void)
-{
-	if (cia1.pra == JOY_FIRE)
-		fire_guns();
-	if (cia1.pra == JOY_UP)
-		fire_missile();
-	if (cia1.pra == JOY_DOWN)
-		fire_smoke();
-	// left and right in the raster IRQ (player_frame)
-}
 
 // The missile against the helicopter at each step. The original tests only
 // once a collision pass, when the missile has moved 35-50 pixels since the last
@@ -316,58 +377,21 @@ __interrupt void heli_flash_frame(void)
 	}
 }
 
+// The weapon (fire, guns, smoke) and the joystick are in the raster IRQ
+// (weapon_frame, player_frame), the missile too (missile_frame)
 void weapon_update(void)
 {
-	if (weapon_state == WEAPON_GUNS)
-	{
-		// the next gun frame, up to the empty one
-		if (sprite_pointers[7] == SPR_GUNS_END)
-			weapon_state = WEAPON_FREE;
-		else
-			sprite_pointers[7]++;
-	}
-	// the missile moves in the raster IRQ (missile_frame)
-	if (weapon_state == WEAPON_SMOKE)
-	{
-		// the smoke stays while the joystick is held down, or the ',' key (the
-		// original tests only the joystick, so smoke from the key ends on the
-		// next frame)
-		vic.spr_pos[7].x = vic.spr_pos[0].x;
-		if (cia1.pra != JOY_DOWN && last_key() != KEY_COMMA)
-		{
-			vic.spr_pos[7].x = 0;
-			weapon_state = WEAPON_FREE;
-		}
-	}
-	if (weapon_state == 4 || weapon_state == 5)
-		return;
-
 	// frame_extras in the original; the headlights follow the player in the IRQ
 	// crash_reset_check: crash_reset_on is never set
 	print_credit();
-	joystick_controls();
 }
 
+// The keys, the cars, the helicopter and the weapon are in the raster IRQ
+// (cars_frame). The original's bug, a frame that ends early while the car from
+// behind goes left 5, skipped the helicopter and the weapon
 void frame_update(void)
 {
-	// M and Z move the player in the IRQ (player_frame)
-	char k = last_key();
-	if (k == KEY_SPACE)
-		fire_guns();
-	if (k == KEY_PERIOD)
-		fire_missile();
-	if (k == KEY_COMMA)
-		fire_smoke();
-
-	// the cars move in the IRQ (cars_frame)
 	turbo_keys();
-
-	// a bug: while the car from behind goes left 5, the frame ends here, without
-	// the weapon (and in the original the helicopter, which moves in the IRQ
-	// here: heli_frame)
-	if (car_direction[3] == 5)
-		return;
-
 	weapon_update();
 }
 
