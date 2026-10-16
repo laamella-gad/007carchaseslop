@@ -55,7 +55,6 @@ static char country(char setup)
 	if (setup)
 	{
 		colours(GREY);
-		heli_state = 1;
 		spawn_helicopter();
 		headlights_on = 0;
 		LINE(188);
@@ -282,11 +281,12 @@ static char tunnel(void)
 	frame_update();
 	LINE(529);
 
-	// the helicopter's sprite is the headlights now
+	// the helicopter's sprite is the headlights now (it stops first, so the IRQ
+	// leaves sprites 5 and 6 alone)
+	heli_state = 0;
 	headlights_on = 1;
 	vic.spr_pos[5].y = 140;
 	sprite_pointers[5] = SPR_HEADLIGHTS;
-	heli_state = 0;
 	vic.spr_pos[6].x = 0;
 	vic.spr_color[5] = YELLOW;
 	LINE(780);

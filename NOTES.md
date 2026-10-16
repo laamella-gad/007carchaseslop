@@ -251,8 +251,7 @@ Differences from the original:
     the F5 pause. The original moves it 5 pixels a `weapon_update`, which comes every 9.1 frames on average at
     the game's speed, anywhere from 1 to 70 (mostly 2-4, with long gaps during the collision pass and the
     PRINTs), so about 0.55 pixels a frame and jerky; turbo doubles the steps there too. The missile here is
-    about 2.7 times as fast. The hit test goes with it into the IRQ; `frame_update` stops
-    the hit helicopter and takes its bomb (`heli_destroy`), so the IRQ never writes what the main code moves.
+    about 2.7 times as fast. The hit test goes with it into the IRQ.
   - The enemy cars and the player move in the raster IRQ (`cars_frame`), so at the same speed on every part of
     the road. The original moves them in `frame_update`, which comes every 19.8 frames on average (4 to 48):
     cars 5 pixels down (or up) and -5 to 5 across a step, the player 10 pixels a step with M and Z, and also a
@@ -264,5 +263,12 @@ Differences from the original:
     game's end, off during the bonus), during the F5 pause (`motion_hold`), nor the player during the crash
     slide (`player_hold`; the original reads M and Z then too). The spawns set a car's direction to 0 first
     and last to the new one, so the IRQ never moves a half placed car.
+  - The helicopter and its bomb move in the raster IRQ too (`heli_frame`), at the cars' speed (0.5 pixels a
+    frame, doubled with turbo; the original: 5 pixels a `frame_update`). `helicopter_bomb` sets
+    `bomb_request` where the original sets `heli_state` to 2, and the IRQ drops the bomb, so only the IRQ
+    changes a flying helicopter's state; a hit stops the helicopter and takes its bomb in the IRQ as well. A
+    landed bomb (y over 195) goes off the screen at once, where the original leaves it at y 200 until the
+    collision pass (line 37) moves it. The original's bug that skips the helicopter while car 4 goes left 5
+    is gone; the weapon still skips that frame.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

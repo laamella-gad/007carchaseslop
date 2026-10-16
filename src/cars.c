@@ -61,13 +61,15 @@ void spawn_car4(void)
 
 void spawn_helicopter(void)
 {
+	// the state last, so the IRQ doesn't move a half placed helicopter
+	heli_state = 0;
 	vic.spr_color[5] = LIGHT_GREY;
 	sprite_pointers[5] = SPR_HELICOPTER;
 	vic.spr_pos[5].x = 80;
 	vic.spr_pos[5].y = 55;
 	heli_flash = 0;
 	heli_hit = 0;
-	heli_destroy = 0;
+	bomb_request = 0;
 	heli_state = 1;
 	LINE(115);
 }
@@ -98,8 +100,9 @@ void spawn_car4_bridge(void)
 
 void helicopter_bomb(char x, unsigned long cycles)
 {
-	if (heli_state == 1 && vic.spr_pos[5].x < x)
-		heli_state = rnd(2) + 1;
+	// the IRQ drops the bomb (the original sets heli_state to 2 here)
+	if (heli_state == 1 && vic.spr_pos[5].x < x && rnd(2))
+		bomb_request = 1;
 	pace(cycles);
 }
 
@@ -264,8 +267,7 @@ static void bomb_check(char x, int left, int right)
 		crash();
 		return;
 	}
-	if (y > 195)
-		vic.spr_pos[6].y = 0;
+	// a landed bomb goes off the screen in the IRQ (heli_frame)
 	LINE(37);
 	LINE(38);
 }

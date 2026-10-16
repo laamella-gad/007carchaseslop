@@ -1,9 +1,10 @@
 #include "helper.h"
 #include "system.h"
 
-char turbo, headlights_on, heli_state;
+char turbo, headlights_on;
+volatile char heli_state, bomb_request;
 volatile char weapon_state;
-volatile char heli_hit, heli_flash, heli_destroy;
+volatile char heli_hit, heli_flash;
 volatile char motion_hold, motion_on, player_hold;
 volatile char car_direction[4];
 
@@ -151,6 +152,49 @@ static void player_frame(void)
 		player_left(step);
 }
 
+// The helicopter flies right; on a request it stops and drops the bomb, which
+// falls down and right to y 195, then it flies on. The original moves both 5
+// pixels a frame_update; here at the cars' speed
+static void heli_frame(unsigned step_speed)
+{
+	static char heli_fx, bomb_f;
+	unsigned s;
+	if (heli_state == 1)
+	{
+		if (bomb_request)
+		{
+			// drop the bomb from the helicopter
+			vic.spr_pos[6].x = vic.spr_pos[5].x;
+			vic.spr_pos[6].y = vic.spr_pos[5].y;
+			bomb_f = 128;
+			heli_state = 3;
+		}
+		else
+		{
+			s = heli_fx + step_speed;
+			heli_fx = s & 255;
+			vic.spr_pos[5].x += (char)(s >> 8);
+		}
+	}
+	bomb_request = 0;
+	if (heli_state == 3)
+	{
+		s = bomb_f + step_speed;
+		bomb_f = s & 255;
+		char d = s >> 8;
+		vic.spr_pos[6].x += d;
+		char y = vic.spr_pos[6].y + d;
+		// landed: off the screen (the original leaves it at y 200 until the
+		// collision pass moves it to 0)
+		if (y > 195)
+		{
+			y = 0;
+			heli_state = 1;
+		}
+		vic.spr_pos[6].y = y;
+	}
+}
+
 // The original moves the cars and the player in frame_update (and the joystick
 // in weapon_update), so at the speed of the BASIC that calls them
 __interrupt void cars_frame(void)
@@ -171,6 +215,7 @@ __interrupt void cars_frame(void)
 		if (y <= 80)
 			car_direction[3] = 0;
 	}
+	heli_frame(turbo ? 2 * CAR_SPEED : CAR_SPEED);
 }
 
 static void turbo_keys(void)
@@ -218,11 +263,13 @@ static void missile_hit(char y)
 	if (!(x > heli - 15 && x < heli + 15))
 		return;
 
-	// the missile is gone, the helicopter explodes
+	// the missile is gone, the helicopter stops and explodes, its bomb with it
 	vic.spr_pos[7].x = 0;
 	vic.spr_pos[7].y = 0;
 	weapon_state = WEAPON_FREE;
-	heli_destroy = 1;
+	heli_state = 0;
+	vic.spr_pos[6].x = 0;
+	vic.spr_pos[6].y = 0;
 	heli_hit = 1;
 	heli_flash = HELI_FLASH_FRAMES;
 }
@@ -303,15 +350,6 @@ void weapon_update(void)
 
 void frame_update(void)
 {
-	// a helicopter the missile hit stops, and its bomb is gone
-	if (heli_destroy)
-	{
-		heli_destroy = 0;
-		heli_state = 0;
-		vic.spr_pos[6].x = 0;
-		vic.spr_pos[6].y = 0;
-	}
-
 	// M and Z move the player in the IRQ (player_frame)
 	char k = last_key();
 	if (k == KEY_SPACE)
@@ -325,27 +363,9 @@ void frame_update(void)
 	turbo_keys();
 
 	// a bug: while the car from behind goes left 5, the frame ends here, without
-	// the helicopter and the weapon
+	// the weapon (and in the original the helicopter, which moves in the IRQ
+	// here: heli_frame)
 	if (car_direction[3] == 5)
-		return;
-
-	if (heli_state == 1)
-		vic.spr_pos[5].x += 5;
-	if (heli_state == 2)
-	{
-		// drop the bomb from the helicopter
-		vic.spr_pos[6].x = vic.spr_pos[5].x;
-		vic.spr_pos[6].y = vic.spr_pos[5].y;
-		heli_state = 3;
-	}
-	if (heli_state == 3)
-	{
-		vic.spr_pos[6].x += 5;
-		vic.spr_pos[6].y += 5;
-		if (vic.spr_pos[6].y == 200)
-			heli_state = 1;
-	}
-	if (heli_state == 4 || heli_state == 5)
 		return;
 
 	weapon_update();
