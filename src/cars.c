@@ -193,6 +193,15 @@ static void crash(void)
 	crash_skid();
 }
 
+void crash_check(void)
+{
+	if (crash_pending)
+	{
+		crash_pending = 0;
+		crash();
+	}
+}
+
 // Lines 12-19: an enemy car hit by the guns or the smoke
 static const unsigned long hit_cycles[4] = {CYCLES_12, CYCLES_13, CYCLES_14, CYCLES_15};
 
@@ -216,21 +225,14 @@ static const unsigned long car_cycles[4][4] = {
 	{CYCLES_32, CYCLES_33, CYCLES_34, CYCLES_35},
 };
 
-// The guns and the smoke hit in the raster IRQ (weapon_hits); a car hit there
-// isn't a crash
+// The guns and the smoke hit in the raster IRQ (weapon_hits), the crashes too
+// (crash_test); the time of the tests is kept
 static void car_check(char car)
 {
 	const unsigned long *c = car_cycles[car - 1];
-	char y = vic.spr_pos[car].y;
-
 	pace(c[0]);
 	pace(c[1]);
 	pace(c[2]);
-	if (y > 140 && y < 180 && explosion_timer[car - 1] <= 0 && !car_shot[car - 1])
-	{
-		crash();
-		return;
-	}
 	pace(c[3]);
 }
 
@@ -262,19 +264,11 @@ static void explosions_end(void)
 	LINE(49);
 }
 
-// Lines 36-38: the helicopter's bomb
-// (x and the player's position are from line 5)
-static void bomb_check(char x, int left, int right)
+// Lines 36-38: the helicopter's bomb. It hits in the raster IRQ (crash_test),
+// a landed bomb goes off the screen there too (heli_frame)
+static void bomb_check(void)
 {
-	char y = vic.spr_pos[6].y;
-
 	LINE(36);
-	if (x > left && x < right && y > 140 && y < 180)
-	{
-		crash();
-		return;
-	}
-	// a landed bomb goes off the screen in the IRQ (heli_frame)
 	LINE(37);
 	LINE(38);
 }
@@ -346,7 +340,8 @@ void collide(void)
 
 	LINE(10);
 	if (bomb_x > 0)
-		bomb_check(bomb_x, x - 10, x + 10);
+		bomb_check();
+	crash_check();
 
 	keys_and_helicopter();
 	crashed = 0;

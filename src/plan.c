@@ -275,5 +275,6 @@ void bonus(void)
 	}
 	LINE(7104);
 	plan_new();
+	crash_pending = 0;
 	motion_on = 1;
 }

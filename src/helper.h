@@ -22,6 +22,9 @@ extern volatile char heli_flash;
 // Set by the IRQ for an enemy car 1-4 the guns or the smoke hit; it shows the
 // explosion, the collision pass scores it
 extern volatile char car_shot[4];
+// Set by the IRQ when an enemy car or the bomb hits the player; the main code
+// runs the crash (crash_check)
+extern volatile char crash_pending;
 // Set by the main code for a flying helicopter to drop its bomb; the IRQ does it
 extern volatile char bomb_request;
 // Set during the F5 pause: the cars, the player and the missile stop
@@ -45,7 +48,7 @@ void weapon_update(void);
 void title_scroll(void);
 
 // From the raster IRQ, once a frame: the cars, the player, the helicopter and
-// its bomb, the weapon, and
+// its bomb, the weapon, the crashes, and
 // the helicopter's explosion flash
 __interrupt void cars_frame(void);
 __interrupt void missile_frame(void);

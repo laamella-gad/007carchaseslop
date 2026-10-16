@@ -23,6 +23,9 @@ void car_explode(char car);
 // Lines 5-60 (gosub5): the explosions, hits, crashes, F7, F5 and the score
 void collide(void);
 
+// A crash the raster IRQ found (crash_test): from the collision pass and after
+// each row of the road
+void crash_check(void);
 // Line 6000 (gosub6000 on the bridge): the player skids left and crashes, and
 // loses a life unless it just crashed
 void crash_skid(void);

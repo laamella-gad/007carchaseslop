@@ -281,5 +281,12 @@ Differences from the original:
     it again on the next pass, for another 50 points. A spawn clears the car's `car_shot`. `frame_update`
     and `weapon_update` are left with the F1/F3 keys and the credit; the original's frame that ended early
     while car 4 goes left 5 is gone with them.
+  - The crashes are tested in the raster IRQ too (`crash_test`): an enemy car within 18 pixels of the player in
+    x at y 140-180 that isn't exploding (the original: whose explosion timer is 0 or less), or the bomb within
+    10 pixels at y 140-180. The original tests once a collision pass, about every 45 frames, so a car could
+    drive through the player between two. The IRQ sets `crash_pending`; the main code runs the crash
+    (`crash_check`) after each row `play_rows` prints and in the collision pass where the tests were. The
+    lines of the tests keep their time. No tests during the crash slide (`player_hold`), and `crash_pending`
+    is cleared when the cars start moving (start of the game, after the bonus).
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

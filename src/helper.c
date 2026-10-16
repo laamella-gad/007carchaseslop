@@ -8,6 +8,7 @@ volatile char heli_hit, heli_flash;
 volatile char motion_hold, motion_on, player_hold;
 volatile char car_direction[4];
 volatile char car_shot[4];
+volatile char crash_pending;
 
 // Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
 // direction or fire at a time counts
@@ -265,6 +266,33 @@ static void weapon_frame(void)
 	weapon_hits();
 }
 
+// An enemy car or the bomb against the player, from lines 20-38 of the
+// original's collision pass: a car within 18 pixels in x and at y 140-180 that
+// isn't exploding, or the bomb within 10 pixels at y 140-180. The original tests
+// once a pass, so a car could drive through the player between two
+static void crash_test(void)
+{
+	if (player_hold || crash_pending)
+		return;
+	int x = vic.spr_pos[0].x;
+	for (char car = 1; car <= 4; car++)
+	{
+		if (car_shot[car - 1] || sprite_pointers[car] == SPR_EXPLOSION)
+			continue;
+		int cx = vic.spr_pos[car].x;
+		char y = vic.spr_pos[car].y;
+		if (cx > x - 18 && cx < x + 18 && y > 140 && y < 180)
+		{
+			crash_pending = 1;
+			return;
+		}
+	}
+	int bx = vic.spr_pos[6].x;
+	char by = vic.spr_pos[6].y;
+	if (bx > 0 && bx > x - 10 && bx < x + 10 && by > 140 && by < 180)
+		crash_pending = 1;
+}
+
 // The original moves the cars and the player in frame_update (and the joystick
 // in weapon_update), so at the speed of the BASIC that calls them
 __interrupt void cars_frame(void)
@@ -287,6 +315,7 @@ __interrupt void cars_frame(void)
 	}
 	heli_frame(turbo ? 2 * CAR_SPEED : CAR_SPEED);
 	weapon_frame();
+	crash_test();
 }
 
 static void turbo_keys(void)

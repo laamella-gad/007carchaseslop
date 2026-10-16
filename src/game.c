@@ -2,6 +2,7 @@
 #include "system.h"
 #include "helper.h"
 #include "sound.h"
+#include "cars.h"
 
 long score, bonus_points;
 signed char lives;
@@ -28,5 +29,8 @@ void play_rows(const Row *rows, char from, char to)
 		if (ops & OP_NEWLINE)
 			put(PET_RETURN);
 		pace(r->cycles);
+		// a crash goes on after the row it happens in, not at the next
+		// collision pass
+		crash_check();
 	}
 }
