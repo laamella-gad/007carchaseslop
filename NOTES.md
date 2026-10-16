@@ -247,5 +247,10 @@ Differences from the original:
     the tunnel's headlights). A hit takes the missile and any falling bomb off the screen and stops the
     helicopter; the raster IRQ flashes it for 40 frames, then it's gone until the next country road (or the
     plan's helicopter). The collision pass scores the 2000 and plays one explosion, paced like line 57.
+  - The missile moves in the raster IRQ, 1.5 pixels a frame (1 and 2 in turn), 3 with turbo, and stops during
+    the F5 pause. The original moves it 5 pixels a `frame_update`, which comes every 3.6 frames on average at
+    the game's speed but anywhere from 1 to 10 (longer during the collision pass), so about 1.4 pixels a frame
+    and jerky; turbo doubles the steps there too. The hit test goes with it into the IRQ; `frame_update` stops
+    the hit helicopter and takes its bomb (`heli_destroy`), so the IRQ never writes what the main code moves.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

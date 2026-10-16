@@ -1,9 +1,9 @@
 #include "helper.h"
 #include "system.h"
 
-char turbo, headlights_on, heli_state, weapon_state;
-char heli_hit;
-volatile char heli_flash;
+char turbo, headlights_on, heli_state;
+volatile char weapon_state;
+volatile char heli_hit, heli_flash, heli_destroy, missile_hold;
 char car_direction[4];
 
 // Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
@@ -20,6 +20,11 @@ char car_direction[4];
 // The helicopter's explosion: frames of the flash, explosion and helicopter
 // shapes switching every 4
 #define HELI_FLASH_FRAMES   40
+
+// The missile's speed in half pixels a frame, doubled with turbo. The original
+// moves it 5 pixels a frame_update, on average every 3.6 frames (1 to 10) at
+// the game's speed: about 1.4 pixels a frame
+#define MISSILE_SPEED       3
 
 // The player stops at the kerbs. The original stops only at exactly these x,
 // so from an x past a kerb (after the crash slide) the car walks off the road
@@ -59,10 +64,11 @@ static void fire_missile(void)
 {
 	if (weapon_state == WEAPON_FREE)
 	{
-		weapon_state = WEAPON_MISSILE;
+		// the state last: from then on the IRQ moves it
 		vic.spr_pos[7].x = vic.spr_pos[0].x;
 		vic.spr_pos[7].y = GUNS_Y;
 		sprite_pointers[7] = SPR_MISSILE;
+		weapon_state = WEAPON_MISSILE;
 	}
 }
 
@@ -132,30 +138,48 @@ static void joystick_controls(void)
 		player_right();
 }
 
-// The missile against the helicopter at each 5 pixel step. The original tests
-// only once a collision pass, when the missile has moved 35-50 pixels since the
-// last one, so it almost never finds it in the 15 pixel high window
-static void missile_hit(void)
+// The missile against the helicopter at each step. The original tests only
+// once a collision pass, when the missile has moved 35-50 pixels since the last
+// one, so it almost never finds it in the 15 pixel high window
+static void missile_hit(char y)
 {
-	char y = vic.spr_pos[7].y;
 	if (!(y > 50 && y < 70))
 		return;
 	// not the headlights in the tunnel, nor a helicopter that's exploding
-	if (heli_state < 1 || heli_state > 3 || sprite_pointers[5] != SPR_HELICOPTER)
+	if (heli_state < 1 || heli_state > 3 || heli_flash || sprite_pointers[5] != SPR_HELICOPTER)
 		return;
 	int x = vic.spr_pos[7].x, heli = vic.spr_pos[5].x;
 	if (!(x > heli - 15 && x < heli + 15))
 		return;
 
-	// the missile is gone, the helicopter stops and explodes, its bomb with it
+	// the missile is gone, the helicopter explodes
 	vic.spr_pos[7].x = 0;
 	vic.spr_pos[7].y = 0;
 	weapon_state = WEAPON_FREE;
-	heli_state = 0;
-	vic.spr_pos[6].x = 0;
-	vic.spr_pos[6].y = 0;
+	heli_destroy = 1;
 	heli_hit = 1;
 	heli_flash = HELI_FLASH_FRAMES;
+}
+
+__interrupt void missile_frame(void)
+{
+	static char half;
+	if (weapon_state != WEAPON_MISSILE || missile_hold)
+		return;
+	half += turbo ? 2 * MISSILE_SPEED : MISSILE_SPEED;
+	char step = half >> 1;
+	half &= 1;
+
+	char y = vic.spr_pos[7].y;
+	if (y <= step)
+	{
+		vic.spr_pos[7].y = 0;
+		weapon_state = WEAPON_FREE;
+		return;
+	}
+	y -= step;
+	vic.spr_pos[7].y = y;
+	missile_hit(y);
 }
 
 __interrupt void heli_flash_frame(void)
@@ -189,14 +213,7 @@ void weapon_update(void)
 		else
 			sprite_pointers[7]++;
 	}
-	if (weapon_state == WEAPON_MISSILE)
-	{
-		vic.spr_pos[7].y -= 5;
-		if (vic.spr_pos[7].y == 0)
-			weapon_state = WEAPON_FREE;
-		else
-			missile_hit();
-	}
+	// the missile moves in the raster IRQ (missile_frame)
 	if (weapon_state == WEAPON_SMOKE)
 	{
 		// the smoke stays while the joystick is held down, or the ',' key (the
@@ -221,6 +238,15 @@ void weapon_update(void)
 
 void frame_update(void)
 {
+	// a helicopter the missile hit stops, and its bomb is gone
+	if (heli_destroy)
+	{
+		heli_destroy = 0;
+		heli_state = 0;
+		vic.spr_pos[6].x = 0;
+		vic.spr_pos[6].y = 0;
+	}
+
 	char k = last_key();
 	if (k == KEY_M)
 		player_right();

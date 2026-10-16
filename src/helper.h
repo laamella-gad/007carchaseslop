@@ -8,7 +8,7 @@ extern char turbo;              // 53232: 1 after F1, 0 after F3
 extern char headlights_on;      // 53233: in the tunnel the headlights follow the player
 extern char car_direction[4];   // 53241-53244: 1-5, 0 off the road
 extern char heli_state;         // 53245: 1 flying, 2 drop the bomb, 3 bomb falling
-extern char weapon_state;       // 53246: 0 free, 1 guns, 2 missile, 3 smoke
+extern volatile char weapon_state; // 53246: 0 free, 1 guns, 2 missile, 3 smoke
 
 #define WEAPON_FREE     0
 #define WEAPON_GUNS     1
@@ -16,9 +16,13 @@ extern char weapon_state;       // 53246: 0 free, 1 guns, 2 missile, 3 smoke
 #define WEAPON_SMOKE    3
 
 // Set when the missile hits the helicopter; the collision pass scores it
-extern char heli_hit;
+extern volatile char heli_hit;
 // Frames left of the helicopter's explosion flash; 0 when none
 extern volatile char heli_flash;
+// Set by the IRQ on a hit; frame_update stops the helicopter and takes its bomb
+extern volatile char heli_destroy;
+// Set during the F5 pause: the missile stops
+extern volatile char missile_hold;
 
 // sys49155: keys, cars, F1/F3, the car from behind, the helicopter, the weapon
 void frame_update(void);
@@ -32,7 +36,9 @@ void weapon_update(void);
 // sys51900: the title logo 3 pixels left
 void title_scroll(void);
 
-// From the raster IRQ, once a frame: the helicopter's explosion flash
+// From the raster IRQ, once a frame: the missile, and the helicopter's
+// explosion flash
+__interrupt void missile_frame(void);
 __interrupt void heli_flash_frame(void);
 
 #pragma compile("helper.c")

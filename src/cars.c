@@ -62,6 +62,7 @@ void spawn_helicopter(void)
 	vic.spr_pos[5].y = 55;
 	heli_flash = 0;
 	heli_hit = 0;
+	heli_destroy = 0;
 	heli_state = 1;
 	LINE(115);
 }
@@ -260,9 +261,11 @@ static void pause(void)
 	// line 58: a delay so that the F5 that paused doesn't end the pause.
 	// Not measured (the timing run never pauses): about 1350 cycles a loop
 	music_off();
+	missile_hold = 1;
 	pace(1001 * 1350ul);
 	while (last_key() != KEY_F5)
 		;
+	missile_hold = 0;
 	pace_restart();
 }
 

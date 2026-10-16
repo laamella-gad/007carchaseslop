@@ -67,7 +67,8 @@ static __interrupt void music_frame(void)
 	}
 }
 
-// The raster IRQ plays the tune and flashes the hit helicopter; the KERNAL's
+// The raster IRQ plays the tune, moves the missile and flashes the hit
+// helicopter; the KERNAL's
 // 60 Hz CIA IRQ still scans the keyboard
 __asm music_irq
 {
@@ -76,6 +77,7 @@ __asm music_irq
 	beq music_kernal
 	sta $d019
 	jsr music_frame
+	jsr missile_frame
 	jsr heli_flash_frame
 	jmp $ea81
 music_kernal:
