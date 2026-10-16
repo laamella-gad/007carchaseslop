@@ -66,6 +66,7 @@ int main(void)
 
 		title();
 		game();
+		motion_on = 0;
 	}
 	return 0;
 }

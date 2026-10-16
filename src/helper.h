@@ -6,7 +6,7 @@
 // Shared with BASIC in the original ($cff0-$cffe)
 extern char turbo;              // 53232: 1 after F1, 0 after F3
 extern char headlights_on;      // 53233: in the tunnel the headlights follow the player
-extern char car_direction[4];   // 53241-53244: 1-5, 0 off the road
+extern volatile char car_direction[4]; // 53241-53244: 1-5, 0 off the road
 extern char heli_state;         // 53245: 1 flying, 2 drop the bomb, 3 bomb falling
 extern volatile char weapon_state; // 53246: 0 free, 1 guns, 2 missile, 3 smoke
 
@@ -21,8 +21,12 @@ extern volatile char heli_hit;
 extern volatile char heli_flash;
 // Set by the IRQ on a hit; frame_update stops the helicopter and takes its bomb
 extern volatile char heli_destroy;
-// Set during the F5 pause: the missile stops
-extern volatile char missile_hold;
+// Set during the F5 pause: the cars, the player and the missile stop
+extern volatile char motion_hold;
+// Set while a game is on the road: the IRQ moves the cars and the player
+extern volatile char motion_on;
+// Set during the crash slide: the player can't steer
+extern volatile char player_hold;
 
 // sys49155: keys, cars, F1/F3, the car from behind, the helicopter, the weapon
 void frame_update(void);
@@ -36,8 +40,9 @@ void weapon_update(void);
 // sys51900: the title logo 3 pixels left
 void title_scroll(void);
 
-// From the raster IRQ, once a frame: the missile, and the helicopter's
-// explosion flash
+// From the raster IRQ, once a frame: the cars and the player, the missile, and
+// the helicopter's explosion flash
+__interrupt void cars_frame(void);
 __interrupt void missile_frame(void);
 __interrupt void heli_flash_frame(void);
 

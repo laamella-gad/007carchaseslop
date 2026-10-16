@@ -612,6 +612,7 @@ static void start(void)
 	}
 	LINE(98);
 	vic.spr_enable = 0xff;
+	motion_on = 1;
 	LINE(180);
 }
 

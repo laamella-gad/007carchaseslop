@@ -21,8 +21,12 @@ void spawn_player(void)
 static const char car_colours[3] = {RED, CYAN, GREEN};
 static const unsigned long spawn_cycles[3] = {CYCLES_101, CYCLES_102, CYCLES_103};
 
+// The direction goes to 0 first and is set last, so the IRQ doesn't move a car
+// that's half placed
+
 void spawn_car(char car)
 {
+	car_direction[car - 1] = 0;
 	vic.spr_pos[car].x = 180;
 	vic.spr_pos[car].y = 80;
 	sprite_pointers[car] = enemy_sprite;
@@ -40,14 +44,15 @@ static void car4_on(char direction)
 {
 	vic.spr_pos[4].x = car4_x[direction - 1];
 	vic.spr_pos[4].y = car4_y[direction - 1];
+	car_direction[3] = direction;
 	pace(car4_cycles[direction - 1]);
 }
 
 void spawn_car4(void)
 {
 	char direction = rnd(5) + 1;
+	car_direction[3] = 0;
 	sprite_pointers[4] = player_sprite;
-	car_direction[3] = direction;
 	vic.spr_color[4] = rnd(10);
 	LINE(105);
 	LINE(106);
@@ -72,6 +77,7 @@ static const unsigned long bridge_cycles[2] = {CYCLES_122, CYCLES_123};
 void spawn_car_bridge(char car)
 {
 	// no colour: the car is still yellow from its explosion
+	car_direction[car - 1] = 0;
 	vic.spr_pos[car].x = 180;
 	vic.spr_pos[car].y = 80;
 	sprite_pointers[car] = enemy_sprite;
@@ -82,8 +88,8 @@ void spawn_car_bridge(char car)
 void spawn_car4_bridge(void)
 {
 	char direction = rnd(2) + 1;
+	car_direction[3] = 0;
 	sprite_pointers[4] = player_sprite;
-	car_direction[3] = direction;
 	vic.spr_color[4] = rnd(10);
 	LINE(125);
 	LINE(126);
@@ -98,7 +104,7 @@ void helicopter_bomb(char x, unsigned long cycles)
 }
 
 // Lines 6000-6099
-void crash_skid(void)
+static void skid(void)
 {
 	// no tune during the crash (the original plays none), so it doesn't turn
 	// the fading volume up again
@@ -160,6 +166,15 @@ void crash_skid(void)
 	LINE(6010);
 	play_rows(rows_6011, 0, 2);
 	LINE(6099);
+}
+
+// The player can't steer during the slide (the original reads the keys in
+// frame_update then too)
+void crash_skid(void)
+{
+	player_hold = 1;
+	skid();
+	player_hold = 0;
 }
 
 // Line 5999
@@ -261,11 +276,11 @@ static void pause(void)
 	// line 58: a delay so that the F5 that paused doesn't end the pause.
 	// Not measured (the timing run never pauses): about 1350 cycles a loop
 	music_off();
-	missile_hold = 1;
+	motion_hold = 1;
 	pace(1001 * 1350ul);
 	while (last_key() != KEY_F5)
 		;
-	missile_hold = 0;
+	motion_hold = 0;
 	pace_restart();
 }
 

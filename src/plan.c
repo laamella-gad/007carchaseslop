@@ -253,6 +253,8 @@ static void bonus_animation(void)
 
 void bonus(void)
 {
+	// the cars and the player stay still for the animation
+	motion_on = 0;
 	bonus_animation();
 	bonus_points += 1000;
 	print(t7100);
@@ -273,4 +275,5 @@ void bonus(void)
 	}
 	LINE(7104);
 	plan_new();
+	motion_on = 1;
 }

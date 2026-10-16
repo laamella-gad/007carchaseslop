@@ -248,9 +248,21 @@ Differences from the original:
     helicopter; the raster IRQ flashes it for 40 frames, then it's gone until the next country road (or the
     plan's helicopter). The collision pass scores the 2000 and plays one explosion, paced like line 57.
   - The missile moves in the raster IRQ, 1.5 pixels a frame (1 and 2 in turn), 3 with turbo, and stops during
-    the F5 pause. The original moves it 5 pixels a `frame_update`, which comes every 3.6 frames on average at
-    the game's speed but anywhere from 1 to 10 (longer during the collision pass), so about 1.4 pixels a frame
-    and jerky; turbo doubles the steps there too. The hit test goes with it into the IRQ; `frame_update` stops
+    the F5 pause. The original moves it 5 pixels a `weapon_update`, which comes every 9.1 frames on average at
+    the game's speed, anywhere from 1 to 70 (mostly 2-4, with long gaps during the collision pass and the
+    PRINTs), so about 0.55 pixels a frame and jerky; turbo doubles the steps there too. The missile here is
+    about 2.7 times as fast. The hit test goes with it into the IRQ; `frame_update` stops
     the hit helicopter and takes its bomb (`heli_destroy`), so the IRQ never writes what the main code moves.
+  - The enemy cars and the player move in the raster IRQ (`cars_frame`), so at the same speed on every part of
+    the road. The original moves them in `frame_update`, which comes every 19.8 frames on average (4 to 48):
+    cars 5 pixels down (or up) and -5 to 5 across a step, the player 10 pixels a step with M and Z, and also a
+    `weapon_update` step with the joystick. Here the cars move 0.5 pixels a frame down (5 pixels every 10
+    frames, twice the original's average) with x in proportion, in 8.8 fixed point, and the player 2 pixels a
+    frame with keys or joystick (the original: 0.5 with the keys, 1.1 with the joystick); turbo doubles both. The cars leave the road at
+    y 200 or 160 (car 4 at 80) with `>=`/`<=` where the original tests the exact y. The headlights follow
+    the player in the IRQ too. The IRQ moves nothing outside the road (`motion_on`: from `start()` to the
+    game's end, off during the bonus), during the F5 pause (`motion_hold`), nor the player during the crash
+    slide (`player_hold`; the original reads M and Z then too). The spawns set a car's direction to 0 first
+    and last to the new one, so the IRQ never moves a half placed car.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).
