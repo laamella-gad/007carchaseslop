@@ -126,6 +126,7 @@ static void skid(void)
 
 	show_lives();
 	show_labels();
+	music_on();
 }
 
 // The player can't steer during the slide (the original reads the keys in

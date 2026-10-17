@@ -6,13 +6,11 @@
 //   row, column, colour, length, then that many screen codes
 //   CLEAR, colour: the screen cleared
 //   CLEAR_ROAD, colour: rows 0-19 cleared
-// up to ROW_END; TUNE first in a row starts the tune with it. TABLE_END after
-// the last row. INK as a colour is the colour play_rows_ink is given
+// up to ROW_END. TABLE_END after the last row. INK as a colour is the colour play_rows_ink is given
 #define ROW_END     0xff
 #define TABLE_END   0xfe
 #define CLEAR       0xfd
 #define CLEAR_ROAD  0xfc
-#define TUNE        0xfb
 #define INK         0x40
 
 extern const char country_start[];

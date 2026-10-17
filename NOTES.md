@@ -260,7 +260,8 @@ Differences from the original:
     `sys51000`, so at the speed of the BASIC around it: about 5.8 frames a note on the title, 6.6 on the high
     score table, slower and uneven during the game. `music_on()` stands where the original calls `sys51000`;
     the tune stops with `sound_off()`, during the crash (the original plays none there, and the IRQ would turn
-    the fading volume up) and during the F5 pause. The IRQ goes to the KERNAL's for its CIA interrupt, so the
+    the fading volume up) and during the F5 pause. After a crash it starts again at once, where the original
+    waits for the next `sys51000`, a few rows on. The IRQ goes to the KERNAL's for its CIA interrupt, so the
     keyboard scan stays at 60 Hz.
   - The missile can hit the helicopter. The original tests it once a collision pass (lines 53-57), when the
     missile has moved 35-50 pixels since the last test, so it almost never sees it in the 15 pixel high window

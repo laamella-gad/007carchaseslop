@@ -61,8 +61,6 @@ void show_rows(const char *table)
 {
 	while (*table != TABLE_END)
 	{
-		if (*table == TUNE)
-			table++;
 		table = draw_row(table, 0);
 	}
 }
@@ -71,11 +69,6 @@ void play_rows_ink(const char *table, char ink)
 {
 	while (*table != TABLE_END)
 	{
-		if (*table == TUNE)
-		{
-			music_on();
-			table++;
-		}
 		row_wait();
 		table = draw_row(table, ink);
 		// a crash goes on after the row it happens in, not at the next
