@@ -103,6 +103,11 @@ char get_key(void);
 // after the typed text is part of the input
 void input_line(char *s, char max);
 
+// geta$:ifa$=""then...: waits for a key, or the joystick's fire button pressed
+// after the wait starts (fire held from before doesn't count). The key, or ' '
+// for fire
+char wait_key(void);
+
 // 0 to n-1
 char rnd(char n);
 

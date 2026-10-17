@@ -67,6 +67,9 @@ extern volatile char title_on;
 extern volatile char glide_on;
 void glide(volatile char *reg, char to, unsigned speed);
 
+// The joystick's fire button (port 2) held down
+char joystick_fire(void);
+
 // A PAL frame
 #define FRAME_CYCLES    19656ul
 // A speed in 1/256 pixels a frame for px pixels in the given cycles

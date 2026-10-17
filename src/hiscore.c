@@ -112,10 +112,9 @@ void hiscore(void)
 
 	show_header();
 	show_table();
-	text_at(19, 7, ink, "HIT ANY KEY TO CONTINUE");
+	text_at(19, 7, ink, "PRESS FIRE TO CONTINUE");
 	print_at(20, 0);
-	while (!get_key())
-		;
+	wait_key();
 	// the lines after go on from here
 	pace_restart();
 }

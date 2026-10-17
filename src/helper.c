@@ -29,6 +29,11 @@ static char joystick(void)
 	return ~cia1.pra & 0x1f;
 }
 
+char joystick_fire(void)
+{
+	return joystick() & JOY_FIRE;
+}
+
 #define GUNS_Y      120     // line 40 pokes it into fire_guns and fire_missile
 #define SMOKE_Y     180
 

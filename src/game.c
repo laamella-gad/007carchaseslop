@@ -13,18 +13,6 @@ char plan[11];
 
 static char row_frame;
 
-void wait_frames(unsigned n)
-{
-	// counting up: oscar64 (1.32.273) drops the exit test of a count down
-	// loop around a wait for the raster IRQ when it inlines it
-	for (unsigned i = 0; i < n; i++)
-	{
-		char f = frame_count;
-		while (frame_count == f)
-			;
-	}
-}
-
 void row_wait(void)
 {
 	// F5 pauses the game (keys_frame) at the next row, until F5 again

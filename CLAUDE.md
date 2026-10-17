@@ -55,4 +55,4 @@ oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs 
 own trailing comma, token pasting inside a nested macro call fails, and a function can keep a static global in a
 register across calls that change it (`input_line` and the printer's `column`, oscar64 issue #424): keep such
 state locally. A count-down loop (`while (n--)`) around a wait for the raster IRQ loses its exit test when
-inlined, and the code after it is dropped: count up (`wait_frames`).
+inlined, and the code after it is dropped: count up.

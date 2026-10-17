@@ -383,6 +383,20 @@ void input_line(char *s, char max)
 	put(PET_RETURN);
 }
 
+char wait_key(void)
+{
+	while (joystick_fire())
+		;
+	for (;;)
+	{
+		char key = get_key();
+		if (key)
+			return key;
+		if (joystick_fire())
+			return ' ';
+	}
+}
+
 char rnd(char n)
 {
 	return (unsigned)rand() % n;

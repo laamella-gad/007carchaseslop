@@ -276,8 +276,8 @@ Differences from the original:
     often, so the game is faster and harder: a game has about 2.2 times the collision passes in the same time.
     The crash text needs no pace either (the crash waits for its animation). The bonus and the track plan
     keep the original's measured timing.
-  - The high scores and the title take no time but the waits for keys and the credits page's delay loop
-    (line 12420, `forx=0to7000`, 419 frames, `wait_frames`): their screens show at once, where the original
+  - The high scores and the title take no time but the waits for keys (the credits page's delay loop, line
+    12420, `forx=0to7000`, 8.4 seconds, is a wait for a key too): their screens show at once, where the original
     builds them up line by line (the title and the high score table in about 0.6 seconds each), and the
     tune and the logo start at once.
   - The tune plays from a raster IRQ (line 251), a note every 6 frames, where the original plays a note per
@@ -375,6 +375,14 @@ Differences from the original:
   - The bridge's edge, x 171-199, is tested every frame in the raster IRQ (`bridge_edge`, in `crash_test`)
     from the first test at line 2216 to the end of the bridge, and goes through `crash_pending` like the
     other crashes. The original tests it twice a pass (lines 2216/2240), so a player could cross it between two.
+- The title, the instruction pages and the high score table also go on with the joystick's fire button
+  (pressed after the page is up, so fire held from the game doesn't skip it); on the title it starts the game,
+  as a key other than 'I'. The credits page waits for a key or fire, where the original shows "please wait"
+  for 8.4 seconds. The prompts say so: "press fire to continue" for "hit any key to continue" (lines 12034,
+  12066, 12089, 12189, 20070) and "please wait" (12417), and "press fire to start game" for "or any other to
+  start game" (11021); keys still work.
+- The controls page (lines 12041-12066) also shows the keys next to the joystick's directions: SPACE guns,
+  '.' missile, 'Z' left, 'M' right, ',' smoke.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys;
   no "? " prompt, and at most the 8 characters the name keeps can be typed.
 - The high score table is in columns: the rank 1-10 right-aligned to column 3, the name from column 5, the

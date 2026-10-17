@@ -21,21 +21,15 @@ static void clear(void)
 	print_at(1, 0);
 }
 
-// geta$:ifa$=""then...
-static void wait_key(void)
-{
-	while (!get_key())
-		;
-}
-
 // Lines 12400-12420: the credits page
 static void credits(void)
 {
 	sound_off();
 	sprites_reset();
 	show_rows(rows_12401, 0, 9);
-	// line 12420: forx=0to7000:next, 8.4 seconds of "please wait"
-	wait_frames(419);
+	// line 12420: forx=0to7000:next, 8.4 seconds of "please wait"; here
+	// "press fire to continue", and a wait for a key or fire
+	wait_key();
 }
 
 // Lines 12100-12199: the cars
@@ -97,6 +91,13 @@ static void instructions(void)
 	vic.spr_pos[0].y = 0;
 	vic.spr_expand_x = 0;
 	show_rows(rows_12041, 0, 18);
+	// the keys next to the joystick's directions (not in the original)
+	text_at(6, 32, CYAN, "KEYS");
+	text_at(8, 32, BLACK, "SPACE");
+	text_at(10, 32, BLACK, "'.'");
+	text_at(13, 9, BLACK, "'Z'");
+	text_at(13, 32, BLACK, "'M'");
+	text_at(16, 32, BLACK, "','");
 	wait_key();
 	show_rows(rows_12070, 0, 13);
 	wait_key();
@@ -132,15 +133,15 @@ void title(void)
 		vic.spr_expand_y = 0;
 		tune_restart();
 
-		// the logo scrolls and the tune plays until a key
+		// the logo scrolls and the tune plays until a key or fire (which
+		// starts the game, as space)
 		while (get_key())
 			;
 		music_on();
 		// line 11070: the raster IRQ scrolls the logo (sys51900 in the
 		// original, 3 pixels a pass of the loop)
 		title_on = 1;
-		while (!(key = get_key()))
-			;
+		key = wait_key();
 		title_on = 0;
 
 		if (key != 'I')
