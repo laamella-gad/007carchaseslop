@@ -38,6 +38,8 @@ original, with comments naming the BASIC lines they port:
   printer that mimics the KERNAL, keys, INPUT and pacing. `sound.c` has the sounds.
 - `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
   `bas2c.py` turns runs of them into `rows_N` tables of `{text, helper ops, cycles}` that `play_rows` replays.
+  Tables that don't depend on the cursor's start state are rendered at build time to screen/colour spans
+  (`OP_SCREEN`, `print_cells`), the rest still go through the printer.
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
   `hiscore.c`.
 

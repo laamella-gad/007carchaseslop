@@ -8,6 +8,10 @@
 - A "row line" does nothing but SYS calls into the helper and one PRINT of a
   literal. Runs of row lines become Row tables (rows_200 for lines 200-214) that
   road.c plays back.
+- A table whose rows draw the same thing wherever the cursor was (it homes the
+  cursor and sets the colour and reverse before printing) is rendered here:
+  each row becomes the screen and colour cells it writes, copied straight to
+  video memory (OP_SCREEN), and its PETSCII strings are left out.
 - CYCLES_<line> is the time the original spends on a line per pass, without the
   subroutines it calls (from tools/c64time.c). The rewrite waits that long.
 """
@@ -84,6 +88,99 @@ def row_line(body):
     return ops, m.group(1), not m.group(2)
 
 
+# PETSCII colour codes to colours, as system.c's put()
+COLOURS = {0x05: 1, 0x1c: 2, 0x1e: 5, 0x1f: 6, 0x81: 8, 0x90: 0, 0x95: 9, 0x96: 10, 0x97: 11,
+           0x98: 12, 0x99: 13, 0x9a: 14, 0x9b: 15, 0x9c: 4, 0x9e: 7, 0x9f: 3}
+
+
+def screen_code(c):
+    if c < 0x40:
+        return c
+    if c < 0x60:
+        return c - 0x40
+    if c < 0x80:
+        return c - 0x20
+    if c < 0xc0:
+        return c - 0x40
+    if c < 0xff:
+        return c - 0x80
+    return 0x5e
+
+
+class Unknown(Exception):
+    pass
+
+
+def render(run):
+    """The cells each row of a table writes, as system.c's put() would print them
+    from any start state, or None if a row depends on it (or scrolls or clears).
+
+    A row is spans of [offset high, offset low, colour, length, screen codes],
+    then 0xff and the printer's state after it: row, column, colour | reverse."""
+    state = {"row": None, "col": None, "ink": None, "rev": None}
+
+    def known(*keys):
+        if any(state[k] is None for k in keys):
+            raise Unknown
+
+    def down():
+        known("row")
+        if state["row"] == 24:
+            raise Unknown       # a scroll
+        state["row"] += 1
+
+    def right():
+        known("row", "col")
+        state["col"] += 1
+        if state["col"] == 40:
+            state["col"] = 0
+            down()
+
+    out = []
+    try:
+        for num, (ops, lit, newline) in run:
+            spans = []
+            for c in lit + (b"\r" if newline else b""):
+                if c in COLOURS:
+                    state["ink"] = COLOURS[c]
+                elif c in (0x0d, 0x8d):
+                    state["col"] = 0
+                    state["rev"] = 0
+                    down()
+                elif c == 0x11:
+                    down()
+                elif c == 0x12:
+                    state["rev"] = 0x80
+                elif c == 0x92:
+                    state["rev"] = 0
+                elif c == 0x13:
+                    state["row"] = state["col"] = 0
+                elif c == 0x1d:
+                    right()
+                elif c in (0x91, 0x9d, 0x93):
+                    raise Unknown       # not in the tables rendered so far
+                elif c < 0x20 or 0x80 <= c < 0xa0:
+                    pass
+                else:
+                    known("row", "col", "ink", "rev")
+                    o = state["row"] * 40 + state["col"]
+                    sc = screen_code(c) | state["rev"]
+                    if spans and spans[-1][0] + len(spans[-1][2]) == o and spans[-1][1] == state["ink"]:
+                        spans[-1][2].append(sc)
+                    else:
+                        spans.append((o, state["ink"], [sc]))
+                    right()
+            known("row", "col", "ink", "rev")
+            cells = []
+            for o, ink, codes in spans:
+                cells += [o >> 8, o & 0xff, ink, len(codes)] + codes
+            cells += [0xff, state["row"], state["col"], state["ink"] | state["rev"]]
+            out.append(cells)
+    except Unknown:
+        return None
+    return out
+
+
 def load_timing(path):
     cycles = {}
     for l in open(path):
@@ -122,6 +219,12 @@ def main():
             runs.append(run)
         run = []
 
+    # the rendered tables, and the strings only they print, which aren't needed
+    rendered = {run[0][0]: render(run) for run in runs}
+    in_rendered = set(num for run in runs if rendered[run[0][0]] for num, r in run)
+    printed = set(lit for num, body in lines if num not in in_rendered for lit in literals(body))
+    arrays = [(name, lit) for name, lit in arrays if lit in printed]
+
     c = open(out + "/text.c", "w")
     h = open(out + "/text.h", "w")
     c.write("// Made by tools/bas2c.py from 007.bas and build/timing.txt: don't edit\n")
@@ -130,10 +233,17 @@ def main():
         c.write("const char %s[] = {%s0};\n" % (name, "".join("%d," % b for b in lit)))
     c.write("\n")
     for run in runs:
+        cells = rendered[run[0][0]]
+        if cells:
+            for (num, r), row in zip(run, cells):
+                c.write("static const char s%d[] = {%s};\n" % (num, ",".join("%d" % b for b in row)))
         c.write("const Row rows_%d[%d] = {\n" % (run[0][0], len(run)))
         for num, (ops, lit, newline) in run:
-            flags = ops + (["OP_NEWLINE"] if newline else [])
-            c.write("\t{%s, %s, %d},\t// %d\n" % (names[lit], " | ".join(flags) or "0",
+            if cells:
+                flags, text = ops + ["OP_SCREEN"], "s%d" % num
+            else:
+                flags, text = ops + (["OP_NEWLINE"] if newline else []), names[lit]
+            c.write("\t{%s, %s, %d},\t// %d\n" % (text, " | ".join(flags) or "0",
                                                  cycles.get(num, 0), num))
         c.write("};\n\n")
 
@@ -142,7 +252,8 @@ def main():
     h.write("// What a row line does before its PRINT, in this order\n")
     h.write("#define OP_TUNE\t\t1\t// sys51000\n#define OP_FRAME\t2\t// sys49155\n")
     h.write("#define OP_TURBO\t4\t// sys49152\n#define OP_WEAPON\t8\t// sys49561\n")
-    h.write("#define OP_NEWLINE\t16\t// the PRINT ends without ';'\n\n")
+    h.write("#define OP_NEWLINE\t16\t// the PRINT ends without ';'\n")
+    h.write("#define OP_SCREEN\t32\t// text is the cells the PRINT writes, rendered\n\n")
     h.write("typedef struct {\n\tconst char *text;\n\tchar ops;\n\tunsigned long cycles;\n} Row;\n\n")
     for name, lit in arrays:
         h.write("extern const char %s[];\n" % name)

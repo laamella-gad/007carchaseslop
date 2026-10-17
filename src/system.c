@@ -208,6 +208,29 @@ void print_restore(void)
 	reverse = saved_reverse;
 }
 
+void print_cells(const char *p)
+{
+	// [offset high, offset low, colour, length, screen codes] until 0xff
+	char hi;
+	while ((hi = p[0]) != 0xff)
+	{
+		unsigned o = (unsigned)hi << 8 | p[1];
+		volatile char *s = screen + o, *c = colour_ram + o;
+		char colour = p[2], n = p[3];
+		p += 4;
+		for (char i = 0; i < n; i++)
+		{
+			s[i] = p[i];
+			c[i] = colour;
+		}
+		p += n;
+	}
+	row = p[1];
+	column = p[2];
+	ink = p[3] & 0x0f;
+	reverse = p[3] & 0x80;
+}
+
 void print_comma(void)
 {
 	char n = 10 - column % 10;

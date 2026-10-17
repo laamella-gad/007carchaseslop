@@ -81,6 +81,10 @@ void print_comma(void);
 void print_save(void);
 void print_restore(void);
 
+// A PRINT rendered by tools/bas2c.py, written straight to the screen and colour
+// RAM: spans of cells, then the cursor, colour and reverse after the PRINT
+void print_cells(const char *cells);
+
 // The next key in the keyboard buffer (GETIN), 0 if none
 char get_key(void);
 

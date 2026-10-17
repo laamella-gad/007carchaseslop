@@ -210,6 +210,14 @@ Most of the road is lines that only `sys` into the helper and PRINT a string; `b
 them into a table of `{text, helper calls, cycles}` (`rows_200` is lines 200-214) that `play_rows` plays back.
 The other lines are written out in C, each followed by its `LINE(n)` pace.
 
+A table that draws the same wherever the cursor was (it homes the cursor and sets the colour and reverse
+before it prints, and doesn't scroll or clear) is printed at build time instead: `bas2c.py` runs the printer
+on it and writes each row as the spans of screen codes and colours it leaves (`s200`), with the cursor,
+colour and reverse after it. `play_rows` copies them into video memory (`print_cells`, `OP_SCREEN`), and the
+table's PETSCII strings are left out. These are the country, curve, bridge and tunnel entry tables and the
+"bridge out" sign (rows_189-2220); the city, tunnel, panel, crash, title and top 10 tables depend on where
+the cursor was, or its colour or reverse, and still print.
+
 Memory: VIC bank 0 as in the original (screen $0400, ROM character set). The sprites are blocks 40-59 at
 $0a00-$0eff: 40-54 where the original has them, and its blocks 13-15 and 33-34 (at $0340 and $0840) moved to
 55-59. Code and data from $0f00 to $a000.
