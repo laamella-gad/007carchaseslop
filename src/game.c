@@ -27,6 +27,12 @@ void row_wait(void)
 	pace_restart();
 }
 
+void show_rows(const Row *rows, char from, char to)
+{
+	for (char i = from; i < to; i++)
+		print_cells(rows[i].cells);
+}
+
 void play_rows(const Row *rows, char from, char to)
 {
 	for (char i = from; i < to; i++)

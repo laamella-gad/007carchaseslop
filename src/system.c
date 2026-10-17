@@ -175,6 +175,41 @@ char print_ink(void)
 	return ink;
 }
 
+void print_set_ink(char colour)
+{
+	ink = colour;
+}
+
+void screen_clear(char colour)
+{
+	for (unsigned i = 0; i < 1000; i++)
+	{
+		screen[i] = ' ';
+		colour_ram[i] = colour;
+	}
+}
+
+void char_at(unsigned o, char colour, char c)
+{
+	// PETSCII to screen code, as put: letters to 1-26, digits, space and
+	// punctuation as they are, the shifted and graphics characters
+	if (c >= 0xc0)
+		c -= 0x80;
+	else if (c >= 0xa0)
+		c -= 0x40;
+	else if (c >= 0x40)
+		c -= 0x40;
+	screen[o] = c;
+	colour_ram[o] = colour;
+}
+
+void text_at(char row, char column, char colour, const char *s)
+{
+	unsigned o = row * 40 + column;
+	while (*s)
+		char_at(o++, colour, *s++);
+}
+
 void print(const char *s)
 {
 	while (*s)

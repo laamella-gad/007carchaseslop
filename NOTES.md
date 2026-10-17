@@ -275,7 +275,9 @@ Differences from the original:
     about as fast as the original's rows, but passes (spawns, the helicopter, sections) come about twice as
     often, so the game is faster and harder: a game has about 2.2 times the collision passes in the same time.
     The crash text needs no pace either (the crash waits for its animation). The bonus, the track plan, the
-    title and the high scores keep the original's measured timing.
+    title and the high scores keep the original's measured timing, but their screens show at once: the lines
+    that draw a screen (the title, the instructions and credits pages, the high score table) only `spend` their
+    time, waited for after the screen is up, where the original builds it up line by line.
   - The tune plays from a raster IRQ (line 251), a note every 6 frames, where the original plays a note per
     `sys51000`, so at the speed of the BASIC around it: about 5.8 frames a note on the title, 6.6 on the high
     score table, slower and uneven during the game. `music_on()` stands where the original calls `sys51000`;
@@ -375,6 +377,8 @@ Differences from the original:
   no "? " prompt, and at most the 8 characters the name keeps can be typed.
 - The high score table is in columns: the rank 1-10 right-aligned to column 3, the name from column 5, the
   score right-aligned to column 25. The original prints `{rght}{rght}` name`,,`score (line 20051), so the
-  score lands at column 20, or 30 after an 8 letter name. The table screen is written straight to screen and
-  colour RAM (in the printer's colour, as the KERNAL's) instead of PRINTed; only the name input uses the printer.
+  score lands at column 20, or 30 after an 8 letter name.
+- The high score and title screens are written straight to screen and colour RAM (`screen_clear`, `text_at`,
+  in the colours the PRINTs give) instead of through the printer; the printer's cursor and colour are set after
+  them (`print_at`, `print_set_ink`) for the name input and the rendered rows that follow.
 - The printer has no logical lines (the game never links two rows).

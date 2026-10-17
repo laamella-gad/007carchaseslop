@@ -23,33 +23,12 @@ static void copy_name(char *d, const char *s)
 // PRINTs with the KERNAL's colour)
 static char ink;
 
-static void put_at(unsigned o, char c)
-{
-	// PETSCII to screen code, as the printer: letters to 1-26, digits, space
-	// and punctuation as they are, the shifted characters a name can have
-	if (c >= 0xc0)
-		c -= 0x80;
-	else if (c >= 0xa0)
-		c -= 0x40;
-	else if (c >= 0x40)
-		c -= 0x40;
-	screen[o] = c;
-	colour_ram[o] = ink;
-}
-
-static void text_at(char row, char column, const char *s)
-{
-	unsigned o = row * 40 + column;
-	while (*s)
-		put_at(o++, *s++);
-}
-
 // n right-aligned, ending before offset o
 static void number_at(unsigned o, long n)
 {
 	do
 	{
-		put_at(--o, '0' + n % 10);
+		char_at(--o, ink, '0' + n % 10);
 		n /= 10;
 	} while (n);
 }
@@ -58,12 +37,8 @@ static void number_at(unsigned o, long n)
 static void show_header(void)
 {
 	ink = print_ink();
-	for (unsigned i = 0; i < 1000; i++)
-	{
-		screen[i] = ' ';
-		colour_ram[i] = ink;
-	}
-	text_at(1, 1, " TOP 10 AGENTS :ENTER YOUR CODE");
+	screen_clear(ink);
+	text_at(1, 1, ink, " TOP 10 AGENTS :ENTER YOUR CODE");
 }
 
 // Lines 20051 and 20066, rows 3-12. The original prints two {rght}, the name
@@ -77,9 +52,9 @@ static void show_table(void)
 	{
 		unsigned o = (TABLE_ROW + n) * 40;
 		number_at(o + NAME_COLUMN - 1, n);
-		text_at(TABLE_ROW + n, NAME_COLUMN, names[n]);
+		text_at(TABLE_ROW + n, NAME_COLUMN, ink, names[n]);
 		number_at(o + NAME_COLUMN + NAME_LENGTH + SCORE_WIDTH, scores[n]);
-		pace(CYCLES_20051 / 10);
+		spend(CYCLES_20051 / 10);
 	}
 }
 
@@ -119,7 +94,7 @@ void hiscore(void)
 
 	show_header();
 	vic.color_back = RED;
-	LINE(20050);
+	spend(CYCLES_20050);
 	show_table();
 
 	// line 20055: the cursor home, then down to the new entry's row
@@ -153,9 +128,9 @@ void hiscore(void)
 	LINE(20060);
 
 	show_header();
-	LINE(20065);
+	spend(CYCLES_20065);
 	show_table();
-	text_at(19, 7, "HIT ANY KEY TO CONTINUE");
+	text_at(19, 7, ink, "HIT ANY KEY TO CONTINUE");
 	print_at(20, 0);
 	LINE(20070);
 	while (!get_key())

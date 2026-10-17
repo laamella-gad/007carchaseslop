@@ -35,13 +35,8 @@ extern const char t7019[];
 extern const char t7020[];
 extern const char t7021[];
 extern const char t7100[];
-extern const char t11000[];
 extern const char t11069[];
 extern const char t11071[];
-extern const char t11079[];
-extern const char t12001[];
-extern const char t12002[];
-extern const char t12100[];
 
 extern const Row rows_91[2];	// lines 91-92
 extern const Row rows_189[6];	// lines 189-194

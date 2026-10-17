@@ -36,6 +36,10 @@ void row_wait(void);
 // plays it, then its PRINT, a row a frame
 void play_rows(const Row *rows, char from, char to);
 
+// The PRINTs of rows from to to-1 at once, for a screen shown whole (title,
+// instructions): no tune, no waits
+void show_rows(const Row *rows, char from, char to);
+
 #pragma compile("game.c")
 
 #endif
