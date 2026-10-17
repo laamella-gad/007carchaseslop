@@ -135,6 +135,11 @@ PANEL_KEPT = {381, 794}
 # The rows a table is played from besides its first: goto800 in the tunnel
 ENTRY_ROWS = {794: [5]}
 
+# Lines that print before setting their colour, and the colour they start with
+# here: the tunnel's 800 and 820 print the three left walls of row 5 before
+# {yel}, so in the original they're white from the score (line 11)
+INK_AT = {800: 7, 820: 7}
+
 # Cell colours and reverse that come from the printer when the table is played
 INK = 0x40      # the printer's colour
 REVERSE = 0x80  # the screen codes take the printer's reverse
@@ -261,6 +266,8 @@ def render(run, bodies):
                 row, col = p.row, p.col
                 p = Printer(first in PANEL_KEPT)
                 p.row, p.col = row, col
+            if num in INK_AT:
+                p.ink = INK_AT[num]
             p.print(lit, newline)
             out.append(p.cells())
     except Unknown:

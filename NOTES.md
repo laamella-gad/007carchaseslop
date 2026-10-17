@@ -252,6 +252,8 @@ Differences from the original:
 - Phase 4 fixes:
   - The city and tunnel `{clr}` clear rows 0-19 only (`PANEL_KEPT` in `bas2c.py`), so the panel and plan stay.
     In the tunnel the plan and the TRACK/PLAN labels are black on black, as they would be in the original.
+  - The tunnel's left walls on row 5 are yellow like the rest (`INK_AT` in `bas2c.py`). Lines 800 and 820 print
+    them before their `{yel}`, so in the original they take the score's white after each collision pass.
   - The tune plays its 76 notes from note 0, without the two notes from past the table.
   - High scores: a new score goes below the scores it doesn't beat, so a tie is entered too instead of `end`;
     the entries from there move down one, 10th place drops out. The name column of the entry is cleared before
