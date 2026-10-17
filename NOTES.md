@@ -182,10 +182,10 @@ One file per part, each named after its BASIC lines in the comments:
 | File | What | Lines |
 |---|---|---|
 | `main.c` | Memory layout, setup, the main loop | 2-4, 39-44 |
-| `system.c` | PETSCII printer, keys, INPUT, pacing | the KERNAL |
+| `system.c` | Screen writes, keys, the name input | the KERNAL |
 | `helper.c` | The machine code helper: cars, keys, joystick, weapon, credit | $c000-$c6ff |
 | `sound.c` | The explosion, the tune, the crash and the bonus siren | $c6d4, $c738, 6003, 13011 |
-| `text.c` | (made) the PRINT strings and the row tables | all |
+| `text.c` | (made) the row tables | all |
 | `game.c` | The BASIC variables shared between the parts; playing back row tables | |
 | `cars.c` | Spawns, the collision pass, explosions, the crash | 5-135, 5999-6099 |
 | `road.c` | The panel and the sections: country, city, tunnel, curves, bridge | 91-98, 140-2250 |
@@ -198,14 +198,13 @@ them into a table of `{cells, tune}` (`rows_200` is lines 200-214) that `play_ro
 helper calls other than the tune (`sys49152`, `49155`, `49561`) are left out: what they did is in the raster IRQ.
 The other lines are written out in C.
 
-The tables' PRINTs were printed ahead: `bas2c.py` ran a copy of the printer on them and wrote each
-row as the spans of screen codes and colours it leaves (`s200`; a `{clr}` is a clear), then the cursor, colour
-and reverse after it. `play_rows` copies them into video memory (`print_cells`), so the tables' PETSCII strings
-are left out. A colour or reverse a table uses before it sets one is the printer's at run time: the city's
-houses take the colour line 400/419/450 printed, and the tunnel's line 800 the colour of the score after a
-collision pass on `goto800` (the table is rendered from row 5 on as if played from there). Where the cursor is
-must be known: the tables that print before homing it (391, 401, 451, 12020, 12101, 12112) start where the
-PRINTs before them leave it, which `bas2c.py` printed too (`ENTRY`), and it refused a row that would scroll.
+The tables' PRINTs were printed ahead: `bas2c.py` ran a copy of the KERNAL's printer on them and wrote each
+row as the spans of screen codes and colours it leaves (`s200`; a `{clr}` is a clear). `play_rows` copies
+them into video memory (`print_cells`). There is no printer at run time: everything else is written to a
+row and column too (`text_at`, `number_at`, `char_at`). A colour a table used before it set one is fixed
+in the cells: the colour the PRINTs before it leave (white mostly, black for the instructions). The city's
+houses are the exception: their spans are marked `CELL_INK` and take the colour of the block
+(`play_rows_ink`), which turns each pass.
 
 Memory: VIC bank 0 as in the original (screen $0400, ROM character set). The sprites are blocks 40-59 at
 $0a00-$0eff: 40-54 where the original has them, and its blocks 13-15 and 33-34 (at $0340 and $0840) moved to
@@ -310,9 +309,7 @@ Differences from the original:
     player's at y 140-180, off to the left, so a bomb 6 pixels left of the car hit and one over the car's
     right half missed). The original tests once a collision pass, about every 45 frames, so a car could
     drive through the player between two. The IRQ sets `crash_pending`; the main code runs the crash
-    (`crash_check`) after each row `play_rows` prints and in the collision pass where the tests were. A
-    crash after a row keeps the printer's cursor and colour (`print_save`, `print_restore`) for the next row,
-    which goes on from where that one stopped; else the road prints from the crash text down and scrolls. The
+    (`crash_check`) after each row `play_rows` prints and in the collision pass where the tests were. The
     lines of the tests keep their time. No tests during the crash slide (`player_hold`), and `crash_pending`
     is cleared when the cars start moving (start of the game, after the bonus) and when they stop at the
     game's end; a crash only runs while they move.
@@ -361,11 +358,12 @@ Differences from the original:
 - The controls page (lines 12041-12066) also shows the keys next to the joystick's directions: SPACE guns,
   '.' missile, 'Z' left, 'M' right, ',' smoke.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys;
-  no "? " prompt, and at most the 8 characters the name keeps can be typed.
+  no "? " prompt, and at most the 8 characters the name keeps can be typed. The name is what was typed, not
+  read back from the screen.
 - The high score table is in columns: the rank 1-10 right-aligned to column 3, the name from column 5, the
   score right-aligned to column 25. The original prints `{rght}{rght}` name`,,`score (line 20051), so the
   score lands at column 20, or 30 after an 8 letter name.
-- The high score and title screens are written straight to screen and colour RAM (`screen_clear`, `text_at`,
-  in the colours the PRINTs give) instead of through the printer; the printer's cursor and colour are set after
-  them (`print_at`, `print_set_ink`) for the name input and the rendered rows that follow.
-- The printer has no logical lines (the game never links two rows).
+- All text is written straight to screen and colour RAM at a row and column (`text_at`, `number_at`), in the
+  colours the PRINTs give, instead of through a printer. The panel's CARS and SCORE, the bridge sign, the city's
+  roofs and street lights and the curve's rows are written where the original's PRINTs put them. Screens are
+  cleared to the colour the text on them has.

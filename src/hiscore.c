@@ -19,12 +19,10 @@ static void copy_name(char *d, const char *s)
 #define NAME_LENGTH     8
 #define SCORE_WIDTH     13
 
-// Written straight to the screen in the colour the printer has (the original
-// PRINTs with the KERNAL's colour)
-static char ink;
+#define ink WHITE
 
 // n right-aligned, ending before offset o
-static void number_at(unsigned o, long n)
+static void number_right(unsigned o, long n)
 {
 	do
 	{
@@ -36,7 +34,6 @@ static void number_at(unsigned o, long n)
 // Line 20050/20065: {clr}{down}{rght} top 10 agents :enter your code{down}
 static void show_header(void)
 {
-	ink = print_ink();
 	screen_clear(ink);
 	text_at(1, 1, ink, " TOP 10 AGENTS :ENTER YOUR CODE");
 }
@@ -51,9 +48,9 @@ static void show_table(void)
 	for (char n = 1; n <= 10; n++)
 	{
 		unsigned o = (TABLE_ROW + n) * 40;
-		number_at(o + NAME_COLUMN - 1, n);
+		number_right(o + NAME_COLUMN - 1, n);
 		text_at(TABLE_ROW + n, NAME_COLUMN, ink, names[n]);
-		number_at(o + NAME_COLUMN + NAME_LENGTH + SCORE_WIDTH, scores[n]);
+		number_right(o + NAME_COLUMN + NAME_LENGTH + SCORE_WIDTH, scores[n]);
 	}
 }
 
@@ -95,9 +92,8 @@ void hiscore(void)
 	// spaces after the name are cut. No "? ": it would cover the rank
 	for (char i = NAME_COLUMN; i < NAME_COLUMN + NAME_LENGTH; i++)
 		screen[(TABLE_ROW + x) * 40 + i] = ' ';
-	print_at(TABLE_ROW + x, NAME_COLUMN);
 	char name[NAME_LENGTH + 1];
-	input_line(name, NAME_LENGTH);
+	input_line(TABLE_ROW + x, NAME_COLUMN, ink, name, NAME_LENGTH);
 	char n = 0;
 	while (name[n])
 		n++;
@@ -110,6 +106,5 @@ void hiscore(void)
 	show_header();
 	show_table();
 	text_at(19, 7, ink, "PRESS FIRE TO CONTINUE");
-	print_at(20, 0);
 	wait_key();
 }

@@ -32,8 +32,8 @@ No tests. The user plays and tests in VICE; build only, and don't drive VICE fro
 `src/main.c` includes everything; each header ends with `#pragma compile("x.c")`. One file per part of the
 original, with comments naming the BASIC lines they port:
 
-- `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` has the PETSCII
-  printer that mimics the KERNAL, keys, INPUT and pacing. `sound.c` has the sounds.
+- `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` writes text and numbers
+  to a row and column of the screen, and has the keys and the name input. `sound.c` has the sounds.
 - `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
   `src/text.c` holds them as `rows_N` tables of `{cells, tune}` that `play_rows` replays: screen/colour
   spans that `print_cells` copies to video memory. `text.c`/`text.h` were made once from `007.bas` and a timing
@@ -49,6 +49,8 @@ Memory: VIC bank 0 as in the original (screen $0400, ROM charset). Sprites are b
 
 oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs parentheses, `#embed` emits its
 own trailing comma, token pasting inside a nested macro call fails, and a function can keep a static global in a
-register across calls that change it (`input_line` and the printer's `column`, oscar64 issue #424): keep such
-state locally. A count-down loop (`while (n--)`) around a wait for the raster IRQ loses its exit test when
+register across calls that change it (oscar64 issue #424): keep such state locally. An inlined function that
+calls one with stack arguments got a stack frame at each call site that didn't balance with the caller's, so
+the software stack crept up each game: `play_rows` is a macro for that.
+A count-down loop (`while (n--)`) around a wait for the raster IRQ loses its exit test when
 inlined, and the code after it is dropped: count up.

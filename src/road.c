@@ -65,14 +65,12 @@ static char country(char setup)
 		if (section_is(3))
 		{
 			row_wait();
-			print(t215);
-			put(PET_RETURN);
+			text_at(10, 2, WHITE, "BRIDGE OUT");
 		}
 		if (section_is(3))
 		{
 			row_wait();
-			print(t216);
-			put(PET_RETURN);
+			text_at(11, 2, WHITE, "ON LEFT   ");
 		}
 		if (collide())
 			return NEXT_GAME_OVER;
@@ -98,15 +96,13 @@ static char country(char setup)
 		if (section_is(3))
 		{
 			row_wait();
-			print(t215);
-			put(PET_RETURN);
+			text_at(10, 2, WHITE, "BRIDGE OUT");
 		}
 		music_on();
 		if (section_is(3))
 		{
 			row_wait();
-			print(t216);
-			put(PET_RETURN);
+			text_at(11, 2, WHITE, "ON LEFT   ");
 		}
 		if (section_is(6))
 			bonus();
@@ -115,6 +111,18 @@ static char country(char setup)
 		if (collide())
 			return NEXT_GAME_OVER;
 	}
+}
+
+// The roofs over the houses, and the street lights
+static const unsigned roofs_middle[6] = {15, 16, 18, 23, 24, 26};
+static const unsigned roofs_sides[6] = {0, 1, 2, 37, 38, 39};
+static const unsigned lights_a[5] = {5 * 40 + 21, 7 * 40 + 21, 10 * 40 + 21, 14 * 40 + 21, 19 * 40 + 21};
+static const unsigned lights_b[5] = {3 * 40 + 21, 5 * 40 + 21, 8 * 40 + 21, 12 * 40 + 21, 17 * 40 + 21};
+
+static void chars_at(const unsigned *at, char n, char colour, char c)
+{
+	for (char i = 0; i < n; i++)
+		char_at(at[i], colour, c);
 }
 
 // Lines 380-499
@@ -129,42 +137,34 @@ static char city(void)
 	signed char lights = 1;
 	play_rows(rows_391, 0, 8);
 	// the three blocks of houses change colour each time
-	char c1 = 155, c2 = 149, c3 = 28;
+	char c1 = LIGHT_GREY, c2 = BROWN, c3 = RED;
 
 	for (;;)
 	{
 		music_on();
-		put(c1);
-		put(PET_RETURN);
 		row_wait();
-		print(t400);
-		play_rows(rows_401, 0, 6);
+		chars_at(roofs_middle, 6, c1, 0xa6);
+		play_rows_ink(rows_401, 0, 6, c1);
 		if (collide())
 			return NEXT_GAME_OVER;
 
-		put(c2);
-		put(PET_RETURN);
 		music_on();
-		play_rows(rows_420, 0, 15);
+		play_rows_ink(rows_420, 0, 15, c2);
 		if (collide())
 			return NEXT_GAME_OVER;
 
-		put(c3);
-		put(PET_RETURN);
 		row_wait();
-		print(t450);
-		play_rows(rows_451, 0, 21);
+		chars_at(roofs_sides, 6, c3, 0xa6);
+		play_rows_ink(rows_451, 0, 21, c3);
 		if (lights == 1)
 		{
 			row_wait();
-			print(t472);
-			put(PET_RETURN);
+			chars_at(lights_a, 5, WHITE, 0xdd);
 		}
 		if (lights == -1)
 		{
 			row_wait();
-			print(t473);
-			put(PET_RETURN);
+			chars_at(lights_b, 5, WHITE, 0xdd);
 		}
 		if (collide())
 			return NEXT_GAME_OVER;
@@ -192,24 +192,10 @@ static char city(void)
 		helicopter_bomb(140);
 
 		// lines 497-499: the colours turn
-		if (c1 == 155)
-		{
-			c1 = 28;
-			c2 = 155;
-			c3 = 149;
-		}
-		else if (c1 == 149)
-		{
-			c1 = 155;
-			c2 = 149;
-			c3 = 28;
-		}
-		else
-		{
-			c1 = 149;
-			c2 = 28;
-			c3 = 155;
-		}
+		char c = c1;
+		c1 = c3;
+		c3 = c2;
+		c2 = c;
 	}
 }
 
@@ -271,14 +257,13 @@ static char curve[3][41];
 
 static void curve_init(void)
 {
-	static const char *const rows[3] = {t140, t141, t142};
+	static const char rows[3][41] = {
+		"    \xdf\xa9 \xdf\xa9     \xdf\xa9  \xdf\xa9     \xdf\xa9      \xdf\xa9  \xdf\xa9 ",
+		"    \xce   \xcd     \xce   \xce       \xcd       \xcd  \xce  ",
+		"   \xce         \xce             \xcd       \xcd    "};
 	for (char i = 0; i < 3; i++)
-	{
-		const char *s = rows[i];
-		for (char j = 0; j < 40; j++)
-			curve[i][j] = s[j];
-		curve[i][40] = 0;
-	}
+		for (char j = 0; j < 41; j++)
+			curve[i][j] = rows[i][j];
 }
 
 // gosub150: the rows 2 characters right
@@ -293,13 +278,11 @@ static void curve_scroll(void)
 		s[0] = a;
 		s[1] = b;
 	}
-	print(t148);
 	for (char i = 0; i < 3; i++)
 	{
 		row_wait();
-		print(curve[i]);
+		text_at(2 + i, 0, BLUE, curve[i]);
 	}
-	put(PET_RETURN);
 }
 
 // The player is carried out of the curve (lines 1026, 1049, 1126 and 1156) in
@@ -467,9 +450,7 @@ static void start(void)
 		colour_ram[23 * 40 + 5 + i] = YELLOW;
 	vic.spr_mcolor0 = BLACK;
 	vic.spr_mcolor1 = RED;
-	print(t94);
-	print_number(lives);
-	put(PET_RETURN);
+	show_lives();
 
 	for (char n = 1; n <= 6; n++)
 	{

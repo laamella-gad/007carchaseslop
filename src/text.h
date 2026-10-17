@@ -10,34 +10,6 @@ typedef struct {
 	char tune;
 } Row;
 
-extern const char t0[];
-extern const char t2[];
-extern const char t4[];
-extern const char t11[];
-extern const char t94[];
-extern const char t140[];
-extern const char t141[];
-extern const char t142[];
-extern const char t148[];
-extern const char t189[];
-extern const char t215[];
-extern const char t216[];
-extern const char t400[];
-extern const char t450[];
-extern const char t472[];
-extern const char t473[];
-extern const char t1002[];
-extern const char t1006[];
-extern const char t7004[];
-extern const char t7017[];
-extern const char t7018[];
-extern const char t7019[];
-extern const char t7020[];
-extern const char t7021[];
-extern const char t7100[];
-extern const char t11069[];
-extern const char t11071[];
-
 extern const Row rows_91[2];	// lines 91-92
 extern const Row rows_189[6];	// lines 189-194
 extern const Row rows_200[15];	// lines 200-214

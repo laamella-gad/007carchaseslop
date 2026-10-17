@@ -28,10 +28,10 @@ void row_wait(void)
 void show_rows(const Row *rows, char from, char to)
 {
 	for (char i = from; i < to; i++)
-		print_cells(rows[i].cells);
+		print_cells(rows[i].cells, 0);
 }
 
-void play_rows(const Row *rows, char from, char to)
+void play_rows_ink(const Row *rows, char from, char to, char ink)
 {
 	for (char i = from; i < to; i++)
 	{
@@ -39,15 +39,22 @@ void play_rows(const Row *rows, char from, char to)
 		if (r->tune)
 			music_on();
 		row_wait();
-		print_cells(r->cells);
+		print_cells(r->cells, ink);
 		// a crash goes on after the row it happens in, not at the next
-		// collision pass. Its prints move the cursor, and the next row goes
-		// on from this one
+		// collision pass
 		if (crash_pending && motion_on)
-		{
-			print_save();
 			crash_check();
-			print_restore();
-		}
 	}
+}
+
+void show_score(void)
+{
+	text_at(22, 8, WHITE, "SCORE");
+	number_at(22, 14, WHITE, score);
+}
+
+void show_lives(void)
+{
+	text_at(21, 8, WHITE, "CARS");
+	number_at(21, 13, WHITE, lives);
 }

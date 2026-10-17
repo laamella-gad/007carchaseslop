@@ -60,7 +60,6 @@ void plan_new(void)
 	}
 	plan[7] = 6;
 	plan_pos = 1;
-	print(t7004);
 
 	// the drawing starts at the bottom, going up, with the second section: the
 	// plan is one section ahead of the road
@@ -196,9 +195,8 @@ void bonus(void)
 	motion_on = 0;
 	bonus_animation();
 	bonus_points += 1000;
-	print(t7100);
-	print_number(bonus_points);
-	put(PET_RETURN);
+	text_at(8, 14, WHITE, "BONUS");
+	number_at(8, 20, WHITE, bonus_points);
 
 	// the points go to the score in 20 steps, 2 frames each (the original's
 	// lines 7101-7103 take 3.5)
@@ -206,9 +204,7 @@ void bonus(void)
 	{
 		wait_frames(2);
 		score += bonus_points / 20;
-		print(t11);
-		print_number(score);
-		put(PET_RETURN);
+		show_score();
 	}
 	plan_new();
 	crash_pending = 0;

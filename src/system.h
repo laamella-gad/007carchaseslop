@@ -1,4 +1,4 @@
-// The C64 as the game uses it: screen, sprites, a PETSCII printer, keys
+// The C64 as the game uses it: screen, sprites, text, keys
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
@@ -53,57 +53,35 @@ inline char last_key(void) { return PEEK(0xc5); }
 #define GREEN       5
 #define BLUE        6
 #define YELLOW      7
+#define BROWN       9
 #define DARK_GREY   11
 #define GREY        12
 #define LIGHT_GREY  15
 
-// PETSCII control codes
+// PETSCII key codes
 #define PET_RETURN  13
-#define PET_RIGHT   29
+#define PET_DEL     0x14
 
-// Sets up the printer
-void system_init(void);
-
-// Prints PETSCII like the KERNAL: colour codes, reverse, cursor moves, home, clear,
-// return, and scrolling when the cursor goes past the bottom right. No logical
-// lines (the timing emulator, tools/c64time.c in the git history, checked that it draws what the KERNAL draws in this game)
-void put(char c);
-void print(const char *s);
-
-// The cursor to row r, column c, reverse off; and the colour prints use,
-// for prints that go on from what was written directly
-void print_at(char r, char c);
-char print_ink(void);
-void print_set_ink(char colour);
-
-// Written straight to the screen and colour RAM, without the printer: the
-// screen cleared to spaces, a PETSCII character at offset o, PETSCII text
+// Written straight to the screen and colour RAM: the screen cleared to spaces,
+// a PETSCII character at offset o, PETSCII text, a number
 void screen_clear(char colour);
 void char_at(unsigned o, char colour, char c);
 void text_at(char row, char column, char colour, const char *s);
+void number_at(char row, char column, char colour, long n);
 
-// BASIC's print of a number: a space or '-', the digits, then a cursor right
-void print_number(long n);
-
-// The cursor, colour and reverse, kept and put back around a print that comes
-// between two rows that go on from each other
-void print_save(void);
-void print_restore(void);
-
-// A PRINT rendered ahead (src/text.c), written straight to the screen and colour
-// RAM: spans of cells, then the cursor, colour and reverse after the PRINT
-void print_cells(const char *cells);
+// A row of a src/text.c table: spans of screen codes and colours, written
+// straight to the screen and colour RAM; ink for the spans without a colour of
+// their own
+void print_cells(const char *cells, char ink);
 
 // The next key in the keyboard buffer (GETIN), 0 if none
 char get_key(void);
 
-// BASIC's input without the "? ": a line typed at the cursor, up to RETURN, at
-// most max characters (the KERNAL takes up to the end of the screen row). Like
-// the screen editor it reads back the whole screen line, so what was on it
-// after the typed text is part of the input
-void input_line(char *s, char max);
+// A line typed at row, column, up to RETURN, at most max characters; DEL
+// rubs out the last one
+void input_line(char row, char column, char colour, char *s, char max);
 
-// geta$:ifa$=""then...: waits for a key, or the joystick's fire button pressed
+// Waits for a key, or the joystick's fire button pressed
 // after the wait starts (fire held from before doesn't count). The key, or ' '
 // for fire
 char wait_key(void);

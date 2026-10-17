@@ -28,7 +28,6 @@ __export const char sprite_data[] = {
 
 int main(void)
 {
-	system_init();
 	music_init();
 
 	// lines 2-4
@@ -36,10 +35,7 @@ int main(void)
 	vic.color_back = BLACK;
 	vic.spr_enable = 0;
 	turbo = 0;
-	// line 2 prints "wait for data transfer" for the original's loader, which
-	// isn't there: only the clear and white
-	put(0x93);
-	put(0x05);
+	screen_clear(WHITE);
 	vic.spr_multi = 0xff;
 	vic.spr_mcolor0 = BLACK;
 	vic.spr_mcolor1 = RED;

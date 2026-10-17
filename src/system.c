@@ -2,177 +2,6 @@
 #include "helper.h"
 #include <stdlib.h>
 
-// The KERNAL's text colour and cursor flags
-#define KERNAL_COLOUR   0x286
-#define KEYS_IN_BUFFER  0xc6
-#define CURSOR_OFF      0xcc
-
-static char row, column, ink = 14, reverse;
-
-void system_init(void)
-{
-	ink = PEEK(KERNAL_COLOUR);
-}
-
-static void scroll(void)
-{
-	for (unsigned i = 0; i < 960; i++)
-	{
-		screen[i] = screen[i + 40];
-		colour_ram[i] = colour_ram[i + 40];
-	}
-	for (char i = 0; i < 40; i++)
-	{
-		screen[960 + i] = ' ';
-		colour_ram[960 + i] = ink;
-	}
-}
-
-static void down(void)
-{
-	if (row == 24)
-		scroll();
-	else
-		row++;
-}
-
-static void clear(void)
-{
-	for (unsigned i = 0; i < 1000; i++)
-	{
-		screen[i] = ' ';
-		colour_ram[i] = ink;
-	}
-	row = column = 0;
-}
-
-static const char colour_codes[32] = {
-	// $00-$1f: $05 white, $1c red, $1e green, $1f blue
-	0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 6, 7,
-};
-
-static const char colour_codes_high[32] = {
-	// $80-$9f: $81 orange, $90 black, $95-$9b brown to light grey, $9c purple,
-	// $9e yellow, $9f cyan
-	0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	1, 0, 0, 0, 0, 10, 11, 12, 13, 14, 15, 16, 5, 0, 8, 4,
-};
-
-void put(char c)
-{
-	char sc;
-
-	if (c < 0x20)
-	{
-		if (colour_codes[c])
-		{
-			ink = colour_codes[c] - 1;
-			return;
-		}
-		switch (c)
-		{
-		case 0x0d:
-			column = 0;
-			reverse = 0;
-			down();
-			break;
-		case 0x11:
-			down();
-			break;
-		case 0x12:
-			reverse = 0x80;
-			break;
-		case 0x13:
-			row = column = 0;
-			break;
-		case 0x1d:
-			if (++column == 40)
-			{
-				column = 0;
-				down();
-			}
-			break;
-		}
-		return;
-	}
-	if (c >= 0x80 && c < 0xa0)
-	{
-		if (colour_codes_high[c - 0x80])
-		{
-			ink = colour_codes_high[c - 0x80] - 1;
-			return;
-		}
-		switch (c)
-		{
-		case 0x8d:
-			column = 0;
-			reverse = 0;
-			down();
-			break;
-		case 0x91:
-			if (row)
-				row--;
-			break;
-		case 0x92:
-			reverse = 0;
-			break;
-		case 0x93:
-			clear();
-			break;
-		case 0x9d:
-			if (column)
-				column--;
-			else if (row)
-			{
-				column = 39;
-				row--;
-			}
-			break;
-		}
-		return;
-	}
-
-	if (c < 0x40)
-		sc = c;
-	else if (c < 0x60)
-		sc = c - 0x40;
-	else if (c < 0x80)
-		sc = c - 0x20;
-	else if (c < 0xc0)
-		sc = c - 0x40;
-	else if (c < 0xff)
-		sc = c - 0x80;
-	else
-		sc = 0x5e;
-
-	unsigned o = row * 40 + column;
-	screen[o] = sc | reverse;
-	colour_ram[o] = ink;
-	if (++column == 40)
-	{
-		column = 0;
-		down();
-	}
-}
-
-void print_at(char r, char c)
-{
-	row = r;
-	column = c;
-	reverse = 0;
-}
-
-char print_ink(void)
-{
-	return ink;
-}
-
-void print_set_ink(char colour)
-{
-	ink = colour;
-}
-
 void screen_clear(char colour)
 {
 	for (unsigned i = 0; i < 1000; i++)
@@ -184,7 +13,7 @@ void screen_clear(char colour)
 
 void char_at(unsigned o, char colour, char c)
 {
-	// PETSCII to screen code, as put: letters to 1-26, digits, space and
+	// PETSCII to screen code: letters to 1-26, digits, space and
 	// punctuation as they are, the shifted and graphics characters
 	if (c >= 0xc0)
 		c -= 0x80;
@@ -203,100 +32,52 @@ void text_at(char row, char column, char colour, const char *s)
 		char_at(o++, colour, *s++);
 }
 
-void print(const char *s)
+void number_at(char row, char column, char colour, long n)
 {
-	while (*s)
-		put(*s++);
-}
-
-void print_number(long n)
-{
-	char digits[11], i = 0;
-
-	if (n < 0)
-	{
-		put('-');
-		n = -n;
-	}
-	else
-		put(' ');
+	char digits[10], i = 0;
 	do
 	{
 		digits[i++] = '0' + n % 10;
 		n /= 10;
 	} while (n);
+	unsigned o = row * 40 + column;
 	while (i)
-		put(digits[--i]);
-	put(PET_RIGHT);
+		char_at(o++, colour, digits[--i]);
 }
 
-static char saved_row, saved_column, saved_ink, saved_reverse;
-
-void print_save(void)
-{
-	saved_row = row;
-	saved_column = column;
-	saved_ink = ink;
-	saved_reverse = reverse;
-}
-
-void print_restore(void)
-{
-	row = saved_row;
-	column = saved_column;
-	ink = saved_ink;
-	reverse = saved_reverse;
-}
-
-// The colour byte of a span: a colour, or CELL_INK for the printer's; with
-// CELL_REVERSE the screen codes take the printer's reverse. In the state at the
-// end, CELL_SAME keeps the printer's reverse
+// The cells: spans of [offset high, offset low, colour, length, screen codes],
+// or [0xfe, colour] (the screen cleared) or [0xfd, colour] (rows 0-19
+// cleared), until 0xff. CELL_INK as the colour takes the colour given
 #define CELL_INK        0x40
-#define CELL_REVERSE    0x80
-#define CELL_SAME       0x20
 
-void print_cells(const char *p)
+void print_cells(const char *p, char ink)
 {
-	// [offset high, offset low, colour, length, screen codes], [0xfe, colour]
-	// (a clear) or [0xfd, colour] (a clear above the panel) until 0xff
 	char hi;
 	while ((hi = p[0]) != 0xff)
 	{
 		if (hi >= 0xfd)
 		{
-			char colour = p[1] & CELL_INK ? ink : p[1];
 			unsigned n = hi == 0xfe ? 1000 : 800;
 			for (unsigned i = 0; i < n; i++)
 			{
 				screen[i] = ' ';
-				colour_ram[i] = colour;
+				colour_ram[i] = p[1];
 			}
 			p += 2;
 			continue;
 		}
-		char colour = p[2];
-		char rev = 0;
-		if (colour & CELL_REVERSE)
-			rev = reverse;
-		colour = colour & CELL_INK ? ink : colour & 0x0f;
+		char colour = p[2] == CELL_INK ? ink : p[2];
 		unsigned o = (unsigned)hi << 8 | p[1];
 		volatile char *s = screen + o, *c = colour_ram + o;
 		char n = p[3];
 		p += 4;
 		for (char i = 0; i < n; i++)
 		{
-			s[i] = p[i] | rev;
+			s[i] = p[i];
 			c[i] = colour;
 		}
 		p += n;
 	}
-	row = p[1];
-	column = p[2];
-	char state = p[3];
-	if (!(state & CELL_INK))
-		ink = state & 0x0f;
-	if (!(state & CELL_SAME))
-		reverse = state & 0x80;
 }
 
 char get_key(void)
@@ -307,30 +88,14 @@ char get_key(void)
 	};
 }
 
-// Screen code back to PETSCII, as the screen editor reads it
-static char petscii(char sc)
+void input_line(char row, char column, char colour, char *s, char max)
 {
-	sc &= 0x7f;
-	if (sc < 0x20)
-		return sc + 0x40;
-	if (sc < 0x40)
-		return sc;
-	if (sc < 0x60)
-		return sc + 0x80;
-	return sc + 0x40;
-}
-
-void input_line(char *s, char max)
-{
-	// The position is kept here: oscar64 (1.32.273) keeps column in a register
-	// across the calls to put, so a test of column doesn't see it move
-	// (https://github.com/drmortalwombat/oscar64/issues/424)
-	char start = column, at = start;
-	unsigned line = row * 40;
+	unsigned line = row * 40 + column;
+	char n = 0;
 	for (;;)
 	{
-		unsigned o = line + at;
-		// a blinking cursor, as the KERNAL's
+		// a blinking cursor
+		unsigned o = line + n;
 		char under = screen[o];
 		char c;
 		while (!(c = get_key()))
@@ -339,41 +104,18 @@ void input_line(char *s, char max)
 
 		if (c == PET_RETURN)
 			break;
-		if (c == 0x14)
+		if (c == PET_DEL)
 		{
-			if (at > start)
-			{
-				put(0x9d);
-				put(' ');
-				put(0x9d);
-				at--;
-			}
+			if (n)
+				char_at(line + --n, colour, ' ');
 		}
-		else if (((c >= 0x20 && c < 0x60) || (c >= 0xc1 && c <= 0xda)) && at < 39 && at < start + max)
+		else if (((c >= 0x20 && c < 0x60) || (c >= 0xc1 && c <= 0xda)) && n < max)
 		{
-			put(c);
-			at++;
+			char_at(line + n, colour, c);
+			s[n++] = c;
 		}
-	}
-
-	// As the screen editor: the whole line from where the typing started,
-	// with what was already there after the typed text, without the spaces
-	// at the end. INPUT skips the spaces in front and stops at ',' or ':'
-	char end = 40;
-	while (end > start && screen[line + end - 1] == ' ')
-		end--;
-	while (start < end && screen[line + start] == ' ')
-		start++;
-	char n = 0;
-	while (start < end && n < max)
-	{
-		char c = petscii(screen[line + start++]);
-		if (c == ',' || c == ':')
-			break;
-		s[n++] = c;
 	}
 	s[n] = 0;
-	put(PET_RETURN);
 }
 
 char wait_key(void)

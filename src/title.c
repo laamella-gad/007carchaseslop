@@ -14,13 +14,6 @@ static void sprites_reset(void)
 	vic.spr_enable = 0xff;
 }
 
-// print"{clr}": the cursor ends on the row below
-static void clear(void)
-{
-	screen_clear(print_ink());
-	print_at(1, 0);
-}
-
 // Lines 12400-12420: the credits page
 static void credits(void)
 {
@@ -42,10 +35,8 @@ static void instructions_cars(void)
 	vic.spr_mcolor0 = BLACK;
 	vic.spr_mcolor1 = RED;
 	// print"{clr}{blk}{down}{rght}  the aim of this game is to shoot the"
-	screen_clear(print_ink());
+	screen_clear(BLACK);
 	text_at(1, 1, BLACK, "  THE AIM OF THIS GAME IS TO SHOOT THE");
-	print_at(2, 0);
-	print_set_ink(BLACK);
 	show_rows(rows_12101, 0, 7);
 
 	vic.spr_expand_y = 0;
@@ -66,16 +57,14 @@ static void instructions_cars(void)
 static void instructions(void)
 {
 	instructions_cars();
-	clear();
+	screen_clear(BLACK);
 	sprites_reset();
 	vic.color_back = DARK_GREY;
 	// print"{home}{down}{rght}{blk}            the car."
 	text_at(1, 1, BLACK, "            THE CAR.");
-	print_set_ink(BLACK);
 	vic.spr_expand_x = 1;
 	// print"            {CBM-T}x9": the line under it
 	text_at(2, 0, BLACK, "            \xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3");
-	print_at(3, 0);
 	vic.spr_mcolor0 = BLACK;
 	vic.spr_mcolor1 = RED;
 
@@ -108,7 +97,7 @@ void title(void)
 	char key;
 	for (;;)
 	{
-		clear();
+		screen_clear(WHITE);
 		vic.color_border = BLACK;
 		vic.color_back = BLACK;
 		vic.spr_multi = 0xff;
@@ -153,10 +142,8 @@ void title(void)
 	tune_restart();
 	sprites_reset();
 	// print"{clr}{down}x13{rght}x14{yel}ready"
-	screen_clear(print_ink());
+	screen_clear(YELLOW);
 	text_at(13, 14, YELLOW, "READY");
-	print_at(14, 0);
-	print_set_ink(YELLOW);
 	vic.spr_expand_x = 0;
 	vic.spr_expand_y = 0x80;
 	plan_clear_colours();

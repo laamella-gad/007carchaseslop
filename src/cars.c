@@ -124,9 +124,7 @@ static void skid(void)
 		return;
 	}
 
-	print(t94);
-	print_number(lives);
-	put(PET_RETURN);
+	show_lives();
 	play_rows(rows_6011, 0, 2);
 }
 
@@ -207,8 +205,6 @@ char collide(void)
 	crash_check();
 	keys_and_helicopter();
 	crashed = 0;
-	print(t11);
-	print_number(score);
-	put(PET_RETURN);
+	show_score();
 	return lives == -1;
 }
