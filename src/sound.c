@@ -23,15 +23,51 @@ static char tune_pos, tune_loops = 2;
 static volatile char music_playing;
 static char music_frames;
 
+// The explosion starts with a hard restart in the raster IRQ: the gate off and
+// the envelope 0 for 2 frames, then the noise. The original turns the gate off
+// and on at once, which the SID may not take as a new note (the ADSR bug)
+static volatile char explosion_frames;
+
 void sound_explosion(void)
 {
-	sid.fmodevol = 0;
-	sid.voices[0].ctrl = 0;
-	sid.voices[0].attdec = 0;
-	sid.fmodevol = 15;
-	sid.voices[0].ctrl = SID_CTRL_NOISE | SID_CTRL_GATE;
-	sid.voices[0].attdec = 0x88;
-	sid.voices[0].freq = 0x28c8;
+	explosion_frames = 3;
+}
+
+volatile char siren_on;
+static unsigned siren_frames;
+
+void sound_siren(unsigned frames)
+{
+	siren_frames = frames;
+	siren_on = 1;
+}
+
+static __interrupt void sound_frame(void)
+{
+	if (explosion_frames)
+	{
+		if (explosion_frames == 3)
+		{
+			sid.voices[0].ctrl = 0;
+			sid.voices[0].attdec = 0;
+			sid.voices[0].susrel = 0;
+		}
+		else if (explosion_frames == 1)
+		{
+			sid.fmodevol = 15;
+			sid.voices[0].attdec = 0x88;
+			sid.voices[0].freq = 0x28c8;
+			sid.voices[0].ctrl = SID_CTRL_NOISE | SID_CTRL_GATE;
+		}
+		explosion_frames--;
+	}
+	// voice 1 follows voice 3's sawtooth, a step a frame
+	if (siren_on)
+	{
+		POKE(0xd401, PEEK(0xd41b));
+		if (!--siren_frames)
+			siren_on = 0;
+	}
 }
 
 // Each frame, from the raster IRQ
@@ -67,9 +103,10 @@ static __interrupt void music_frame(void)
 	}
 }
 
-// The raster IRQ plays the tune, moves the cars, the player and the missile,
-// and flashes the hit helicopter; the KERNAL's
-// 60 Hz CIA IRQ still scans the keyboard
+// The raster IRQ plays the tune and the sounds, reads the F keys, moves the
+// cars, the player and the missile, flashes the hit helicopter and runs the
+// title's and the bonus's animations; the KERNAL's 60 Hz CIA IRQ still scans
+// the keyboard
 __asm music_irq
 {
 	lda $d019
@@ -77,9 +114,12 @@ __asm music_irq
 	beq music_kernal
 	sta $d019
 	jsr music_frame
+	jsr sound_frame
+	jsr keys_frame
 	jsr cars_frame
 	jsr missile_frame
 	jsr heli_flash_frame
+	jsr anim_frame
 	jmp $ea81
 music_kernal:
 	jmp $ea31
@@ -125,6 +165,7 @@ void sound_off(void)
 
 void sound_crash(char volume)
 {
+	explosion_frames = 0;
 	sid.fmodevol = volume;
 	sid.voices[0].ctrl = SID_CTRL_NOISE | SID_CTRL_GATE;
 	sid.voices[0].attdec = 15;
@@ -133,8 +174,11 @@ void sound_crash(char volume)
 
 void sound_crash_off(void)
 {
+	// the envelope to 0 too, so the next step starts a new note
 	sid.fmodevol = 0;
 	sid.voices[0].ctrl = 0;
+	sid.voices[0].attdec = 0;
+	sid.voices[0].susrel = 0;
 }
 
 void sound_siren_start(void)
@@ -149,7 +193,4 @@ void sound_siren_start(void)
 	sid.voices[2].ctrl = SID_CTRL_SAW | SID_CTRL_GATE;
 }
 
-void sound_siren_step(void)
-{
-	POKE(0xd401, PEEK(0xd41b));
-}
+

@@ -184,8 +184,8 @@ cumulative, so the C code can take any time up to the original's. CIA 2 timer A 
 counts its underflows. After a wait for a key, `pace_restart()` starts from now; when the C code is more than
 2000 ticks (half a second) behind, the target catches up instead of rushing.
 
-Not measured, estimated: the pause delay (line 58, 1001 FOR loops at about 1350 cycles) and line 13010 (the
-player to the left before the bonus, about 2750 cycles a step).
+Not measured, estimated: the pause delay (line 58, 1001 FOR loops at about 1350 cycles; not needed now, the
+pause goes on a key press) and line 13010 (the player to the left before the bonus, about 2750 cycles a step).
 
 ## The rewrite
 
@@ -276,11 +276,10 @@ Differences from the original:
     within 18 pixels of the player in x, y 110-140 for the guns, 175-200 for the smoke) go with it
     (`weapon_hits`): the original tests them once a collision pass, about every 45 frames, so the shorter
     gun fire would mostly miss it. The IRQ shows the explosion and sets `car_shot`; the next collision pass
-    scores it, plays the sound and starts the explosion timer (`shots()`, right after line 6), and a shot car
+    scores it and plays the sound (`shots()`, right after line 6), and a shot car
     isn't a crash meanwhile. A car that's already exploding can't be hit again; in the original the guns hit
-    it again on the next pass, for another 50 points. A spawn clears the car's `car_shot`. `frame_update`
-    and `weapon_update` are left with the F1/F3 keys and the credit; the original's frame that ended early
-    while car 4 goes left 5 is gone with them.
+    it again on the next pass, for another 50 points. A spawn clears the car's `car_shot`. The original's
+    frame that ended early while car 4 goes left 5 is gone with `frame_update`.
   - The crashes are tested in the raster IRQ too (`crash_test`): an enemy car within 18 pixels of the player in
     x at y 140-180 that isn't exploding (the original: whose explosion timer is 0 or less), or the bomb within
     10 pixels at y 140-180. The original tests once a collision pass, about every 45 frames, so a car could
@@ -289,11 +288,38 @@ Differences from the original:
     crash after a row keeps the printer's cursor and colour (`print_save`, `print_restore`) for the next row,
     which goes on from where that one stopped; else the road prints from the crash text down and scrolls. The
     lines of the tests keep their time. No tests during the crash slide (`player_hold`), and `crash_pending`
-    is cleared when the cars start moving (start of the game, after the bonus).
+    is cleared when the cars start moving (start of the game, after the bonus) and when they stop at the
+    game's end; a crash only runs while they move.
   - The curves carry the player out smoothly, in the raster IRQ (`curve_drift`, `drift_frame`): 1 pixel a
     frame, left down to x 80 or right up to x 240, not during the crash slide. The original jumps the player
     20 pixels twice a pass of the curve loop (lines 1026/1049 and 1126/1156), about every 45 frames, so
     about 0.45 pixels a frame. Its right push works while x is below 240, so it can reach 259, where BASIC
     stops with `?ILLEGAL QUANTITY` (the C port wrapped it to the left edge); here it stops at 240.
+  - The crash is in the raster IRQ (`crash_frame`); `skid` waits for it. The slide goes smoothly left at
+    2 pixels a frame (the original: 20 pixels a pass of lines 6000-6001, about 1.2 pixels a frame), with the enemy
+    car's shape and the noise for the first 10 pixels of each 20, until x 60. Then 16 steps of 12 frames
+    (lines 6002-6006, about 24 frames a step in the original): the car yellow with the noise, volume 15 down to 0, and grey for the last 2 frames
+    of each, with the gate off and the envelope at 0, so each step starts a new note. The original jumps 10
+    pixels a line and paces the steps with BASIC.
+  - An enemy car explodes for 22 frames from the hit, then the raster IRQ takes it off the road
+    (`car_boom`, `booms_frame`). The original counts its explosion timer (`j1`-`j4`) down a collision pass
+    and takes the car off at 0, so a shot car shows anywhere from 1 to about 90 frames. The timer is gone;
+    lines 45-49 keep their time. The bridge's explosions start the same 22 frames, and a spawn clears them.
+  - F1/F3 (turbo), F5 (pause) and F7 (end the game) are read in the raster IRQ (`keys_frame`) while the cars
+    move. F5 pauses on a key press and goes on at the next press: no delay loop (line 58), and the main code
+    stops at its next line (`pace` waits during the pause) instead of at the collision pass. F7 sets
+    `quit_request`, which the collision pass turns into the game's end where the original reads the key, so
+    a short press isn't missed.
+  - The credit is written to row 23 by the raster IRQ, every frame while the cars move (`print_credit`), so
+    it's back right after the road scrolls it; the original writes it in `weapon_update`.
+  - `sound_explosion` does a hard restart in the raster IRQ: the gate off and the envelope 0 for 2 frames,
+    then the noise (the original turns the gate off and on at once, which the SID may not take as a new
+    note), and without the original's volume 0 then 15.
+  - The title's logo scrolls in the raster IRQ (`title_on`), at twice the original's average speed (3 pixels a
+    pass of line 11070, about 0.5 pixels a frame; here 1), smoothly.
+  - The bonus animation's moves are in the raster IRQ (`glide`, `anim_frame`), one sprite coordinate at a
+    time at twice the speed the original's loop took, in 8.8 fixed point; `bonus_animation` waits for each. The
+    siren steps voice 1 to voice 3's sawtooth once a frame for half the time of line 13014 (162 frames),
+    where the original takes 501 steps in 324 frames.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

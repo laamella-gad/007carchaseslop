@@ -600,6 +600,7 @@ static void start(void)
 	LINE(98);
 	vic.spr_enable = 0xff;
 	crash_pending = 0;
+	quit_request = 0;
 	motion_on = 1;
 	LINE(180);
 }

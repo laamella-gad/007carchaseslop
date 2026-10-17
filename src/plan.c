@@ -171,7 +171,19 @@ void plan_new(void)
 	}
 }
 
-// Lines 13000-13099: the bonus car drives round the player's car with a siren
+// One sprite coordinate to a value in the raster IRQ, smoothly, at twice the
+// speed the original's loop of steps took; then on with the time from here
+static void glide_wait(volatile char *reg, char to, char px, unsigned long cycles)
+{
+	glide(reg, to, PX_SPEED(2 * px, cycles));
+	while (glide_on)
+		;
+	pace_restart();
+}
+
+// Lines 13000-13099: the bonus car drives round the player's car with a siren.
+// The moves and the siren are in the raster IRQ, a step a frame; the original
+// steps them from BASIC, unevenly
 static void bonus_animation(void)
 {
 	// all but the player off the screen
@@ -188,18 +200,14 @@ static void bonus_animation(void)
 	tune_restart();
 	LINE(13002);
 
-	// the player to the left, the bonus car on in the middle. The time
-	// wasn't measured per step: about 2750 cycles each
+	// the player to the left, a pixel for each x from 80 up to the player's
+	// (to 79, or 1 left from below 80), the bonus car on in the middle. The
+	// time wasn't measured per step: about 2750 cycles each
 	sprite_pointers[1] = SPR_BONUS_CAR;
 	vic.spr_color[1] = WHITE;
 	// (stops at 0, where the original stops with ?ILLEGAL QUANTITY)
-	unsigned y = 80;
-	do
-	{
-		if (vic.spr_pos[0].x)
-			vic.spr_pos[0].x--;
-		pace(2750);
-	} while (++y <= x);
+	char to = x >= 80 ? 79 : x ? x - 1 : 0;
+	glide_wait(&vic.spr_pos[0].x, to, 1, 2750);
 	vic.spr_pos[1].x = 180;
 	pace(30000);
 	LINE(13011);
@@ -207,45 +215,22 @@ static void bonus_animation(void)
 	sound_siren_start();
 	LINE(13012);
 	LINE(13013);
-	for (unsigned t = 0; t <= 500; t++)
-	{
-		sound_siren_step();
-		pace(CYCLES_13014 / 501);
-	}
+	// half the time of the original
+	sound_siren((unsigned)(CYCLES_13014 / FRAME_CYCLES / 2));
+	while (siren_on)
+		;
+	pace_restart();
 	sound_off();
 
 	// down, right, up and back round the player
-	for (char i = 0; i <= 70; i++)
-	{
-		pace(CYCLES_13015 / 71);
-		vic.spr_pos[1].y = 200 - i;
-	}
-	for (char i = 80; i <= 180; i++)
-	{
-		vic.spr_pos[0].x = i;
-		pace(CYCLES_13016 / 101);
-	}
-	for (char i = 160; i >= 140; i--)
-	{
-		pace(CYCLES_13017 / 21);
-		vic.spr_pos[0].y = i;
-	}
+	vic.spr_pos[1].y = 200;
+	glide_wait(&vic.spr_pos[1].y, 130, 71, CYCLES_13015);
+	glide_wait(&vic.spr_pos[0].x, 180, 101, CYCLES_13016);
+	glide_wait(&vic.spr_pos[0].y, 140, 21, CYCLES_13017);
 	LINE(13018);
-	for (char i = 140; i <= 160; i++)
-	{
-		vic.spr_pos[0].y = i;
-		pace(CYCLES_13021 / 21);
-	}
-	for (char i = 180; i >= 80; i--)
-	{
-		vic.spr_pos[0].x = i;
-		pace(CYCLES_13022 / 101);
-	}
-	for (char i = 0; i <= 70; i++)
-	{
-		pace(CYCLES_13029 / 71);
-		vic.spr_pos[1].y = 130 + i;
-	}
+	glide_wait(&vic.spr_pos[0].y, 160, 21, CYCLES_13021);
+	glide_wait(&vic.spr_pos[0].x, 80, 101, CYCLES_13022);
+	glide_wait(&vic.spr_pos[1].y, 200, 71, CYCLES_13029);
 	vic.spr_pos[1].x = 0;
 	LINE(13030);
 	LINE(13099);

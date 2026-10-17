@@ -4,11 +4,6 @@
 #include "sound.h"
 #include "system.h"
 
-// j1-j4: set to 1 when an enemy car explodes, counted down each collision pass.
-// At 0 the explosion is taken off the road; the car can't crash into the player
-// while it is 1 or more. Stops at -100 (a BASIC float never wraps)
-static signed char explosion_timer[4];
-
 void spawn_player(void)
 {
 	vic.spr_pos[0].x = 180;
@@ -28,6 +23,7 @@ void spawn_car(char car)
 {
 	car_direction[car - 1] = 0;
 	car_shot[car - 1] = 0;
+	car_boom[car - 1] = 0;
 	vic.spr_pos[car].x = 180;
 	vic.spr_pos[car].y = 80;
 	sprite_pointers[car] = enemy_sprite;
@@ -54,6 +50,7 @@ void spawn_car4(void)
 	char direction = rnd(5) + 1;
 	car_direction[3] = 0;
 	car_shot[3] = 0;
+	car_boom[3] = 0;
 	sprite_pointers[4] = player_sprite;
 	vic.spr_color[4] = rnd(10);
 	LINE(105);
@@ -83,6 +80,7 @@ void spawn_car_bridge(char car)
 	// no colour: the car is still yellow from its explosion
 	car_direction[car - 1] = 0;
 	car_shot[car - 1] = 0;
+	car_boom[car - 1] = 0;
 	vic.spr_pos[car].x = 180;
 	vic.spr_pos[car].y = 80;
 	sprite_pointers[car] = enemy_sprite;
@@ -95,6 +93,7 @@ void spawn_car4_bridge(void)
 	char direction = rnd(2) + 1;
 	car_direction[3] = 0;
 	car_shot[3] = 0;
+	car_boom[3] = 0;
 	sprite_pointers[4] = player_sprite;
 	vic.spr_color[4] = rnd(10);
 	LINE(125);
@@ -117,42 +116,16 @@ static void skid(void)
 	// the fading volume up again
 	music_off();
 
-	// Back and forth between the enemy car and the player's, 20 pixels left
-	// each time, until the left side of the road. The original stops with
-	// ?ILLEGAL QUANTITY when x goes below 0; here it stops at 0
-	for (;;)
-	{
-		int x = vic.spr_pos[0].x - 10;
-		vic.spr_pos[0].x = x < 0 ? 0 : x;
-		sprite_pointers[0] = SPR_ENEMY;
-		LINE(6000);
-		frame_update();
+	// Lines 6000-6006 in the raster IRQ (crash_frame), smoothly: back and forth
+	// between the enemy car and the player's, 20 pixels left each time, until
+	// the left side of the road, then the player's car explodes, flashing
+	// yellow, with the noise fading out. The original jumps 10 pixels a line,
+	// and stops with ?ILLEGAL QUANTITY when x goes below 0; here it stops at 0
+	crash_anim = CRASH_SLIDE;
+	while (crash_anim)
+		;
+	pace_restart();
 
-		sound_explosion();
-		x = vic.spr_pos[0].x - 10;
-		vic.spr_pos[0].x = x < 0 ? 0 : x;
-		sprite_pointers[0] = player_sprite;
-		LINE(6001);
-		if (vic.spr_pos[0].x <= 60)
-			break;
-	}
-
-	// The player's car explodes, flashing yellow, with the noise fading out
-	sprite_pointers[0] = SPR_EXPLOSION;
-	for (signed char v = 15; v >= 0; v--)
-	{
-		LINE(6002);
-		sound_crash(v);
-		vic.spr_color[0] = YELLOW;
-		LINE(6003);
-		LINE(6004);
-		frame_update();
-		vic.spr_color[0] = LIGHT_GREY;
-		sound_crash_off();
-		LINE(6006);
-	}
-
-	sprite_pointers[0] = player_sprite;
 	turbo = 0;
 	LINE(6007);
 	if (crashed == 1)
@@ -193,9 +166,10 @@ static void crash(void)
 	crash_skid();
 }
 
+// Only while the cars move: the crash runs in the raster IRQ then
 void crash_check(void)
 {
-	if (crash_pending)
+	if (crash_pending && motion_on)
 	{
 		crash_pending = 0;
 		crash();
@@ -208,7 +182,9 @@ static const unsigned long hit_cycles[4] = {CYCLES_12, CYCLES_13, CYCLES_14, CYC
 void car_explode(char car)
 {
 	sprite_pointers[car] = SPR_EXPLOSION;
-	explosion_timer[car - 1] = 1;
+	// a car the weapon hit has its time from the hit
+	if (!car_boom[car - 1])
+		car_boom[car - 1] = CAR_BOOM_FRAMES;
 	vic.spr_color[car] = YELLOW;
 	pace(hit_cycles[car - 1]);
 	sound_explosion();
@@ -247,20 +223,15 @@ static void shots(void)
 		}
 }
 
-// Lines 45-49: explosions off the road after one collision pass
+// Lines 45-49: explosions off the road after one collision pass. The raster
+// IRQ takes them off after CAR_BOOM_FRAMES (booms_frame); the time of the
+// tests is kept
 static const unsigned long clear_cycles[4] = {CYCLES_45, CYCLES_46, CYCLES_47, CYCLES_48};
 
 static void explosions_end(void)
 {
 	for (char car = 1; car <= 4; car++)
-	{
-		if (explosion_timer[car - 1] == 0 && sprite_pointers[car] == SPR_EXPLOSION)
-		{
-			car_direction[car - 1] = 0;
-			vic.spr_pos[car].x = 0;
-		}
 		pace(clear_cycles[car - 1]);
-	}
 	LINE(49);
 }
 
@@ -273,28 +244,13 @@ static void bomb_check(void)
 	LINE(38);
 }
 
-// Lines 58-60: F5 pauses until F5 again
-static void pause(void)
-{
-	// line 58: a delay so that the F5 that paused doesn't end the pause.
-	// Not measured (the timing run never pauses): about 1350 cycles a loop
-	music_off();
-	motion_hold = 1;
-	pace(1001 * 1350ul);
-	while (last_key() != KEY_F5)
-		;
-	motion_hold = 0;
-	pace_restart();
-}
-
-// Lines 51-57: F7, F5, and the missile hitting the helicopter
+// Lines 51-57: F7, F5, and the missile hitting the helicopter. F5 pauses in
+// the raster IRQ (keys_frame, lines 58-60), F7 is read there too
 static void keys_and_helicopter(void)
 {
-	if (last_key() == KEY_F7)
+	if (quit_request)
 		lives = -1;
 	LINE(51);
-	if (last_key() == KEY_F5)
-		pause();
 	LINE(52);
 
 	// The missile tests itself at each step (weapon_update); the original tests
@@ -320,9 +276,6 @@ void collide(void)
 	char bomb_x = vic.spr_pos[6].x;
 	LINE(5);
 
-	for (char i = 0; i < 4; i++)
-		if (explosion_timer[i] > -100)
-			explosion_timer[i]--;
 	explosions_end();
 	shots();
 	LINE(6);

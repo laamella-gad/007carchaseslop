@@ -32,7 +32,7 @@ void play_rows(const Row *rows, char from, char to)
 		// a crash goes on after the row it happens in, not at the next
 		// collision pass. Its prints move the cursor, and the next row goes
 		// on from this one
-		if (crash_pending)
+		if (crash_pending && motion_on)
 		{
 			print_save();
 			crash_check();

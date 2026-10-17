@@ -1,4 +1,6 @@
 #include "helper.h"
+#include "game.h"
+#include "sound.h"
 #include "system.h"
 
 char turbo, headlights_on;
@@ -9,6 +11,8 @@ volatile char motion_hold, motion_on, player_hold;
 volatile char car_direction[4];
 volatile char car_shot[4];
 volatile char crash_pending, curve_drift;
+volatile char quit_request, crash_anim, title_on, glide_on;
+volatile char car_boom[4];
 
 // Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
 // direction or fire at a time counts
@@ -244,6 +248,7 @@ static void weapon_hits(void)
 		{
 			sprite_pointers[car] = SPR_EXPLOSION;
 			vic.spr_color[car] = YELLOW;
+			car_boom[car - 1] = CAR_BOOM_FRAMES;
 			car_shot[car - 1] = 1;
 		}
 	}
@@ -312,12 +317,108 @@ static void crash_test(void)
 		crash_pending = 1;
 }
 
+static void print_credit(void)
+{
+	// "(c) coplin software" in screen codes on row 23, every frame
+	static const char credit[] = {
+		0x28, 0x03, 0x29, 0x00, 0x03, 0x0f, 0x10, 0x0c, 0x09, 0x0e,
+		0x00, 0x13, 0x0f, 0x06, 0x14, 0x17, 0x01, 0x12, 0x05,
+	};
+	for (char i = 0; i < sizeof(credit); i++)
+		if (credit[i])
+			screen[23 * 40 + 5 + i] = credit[i];
+}
+
+// An exploding enemy car goes off the road when its time is up. The original
+// takes it off at the next collision pass but one after the hit, so it shows
+// for 1 to 90 frames
+static void booms_frame(void)
+{
+	for (char car = 1; car <= 4; car++)
+		if (car_boom[car - 1] && !--car_boom[car - 1])
+		{
+			car_direction[car - 1] = 0;
+			vic.spr_pos[car].x = 0;
+		}
+}
+
+// The crash slide: the player's car 20 pixels left at a time, the enemy car's
+// shape for the first 10 with the explosion's noise, until x 60. 2 pixels a
+// frame, in 1/256 pixels; the original: 20 pixels a pass of lines 6000-6001,
+// about 1.2 a frame
+#define SLIDE_SPEED     512
+// Then the car explodes: 16 steps of the noise, from volume 15 down to 0. The
+// car is yellow during the noise and grey for the 2 frames between. A step of
+// lines 6002-6006 takes about 24 frames, here half that
+#define BOOM_STEP_FRAMES    12
+#define BOOM_GAP_FRAMES     2
+
+static void crash_frame(void)
+{
+	static char slide_f, slide_px, boom_frame;
+	static signed char boom_volume;
+	if (crash_anim == CRASH_SLIDE)
+	{
+		if (!slide_px && !slide_f)
+		{
+			// a pass starts: the enemy car's shape and the noise
+			sprite_pointers[0] = SPR_ENEMY;
+			sound_explosion();
+		}
+		unsigned s = slide_f + SLIDE_SPEED;
+		slide_f = s & 255;
+		char d = s >> 8, x = vic.spr_pos[0].x;
+		vic.spr_pos[0].x = x > d ? x - d : 0;
+		slide_px += d;
+		if (slide_px >= 10)
+			sprite_pointers[0] = player_sprite;
+		if (slide_px >= 20)
+		{
+			slide_px = 0;
+			slide_f = 0;
+			if (vic.spr_pos[0].x <= 60)
+			{
+				sprite_pointers[0] = SPR_EXPLOSION;
+				boom_volume = 15;
+				boom_frame = 0;
+				crash_anim = CRASH_BOOM;
+			}
+		}
+	}
+	else if (crash_anim == CRASH_BOOM)
+	{
+		if (boom_frame == 0)
+		{
+			sound_crash(boom_volume);
+			vic.spr_color[0] = YELLOW;
+		}
+		else if (boom_frame == BOOM_STEP_FRAMES - BOOM_GAP_FRAMES)
+		{
+			vic.spr_color[0] = LIGHT_GREY;
+			sound_crash_off();
+		}
+		if (++boom_frame == BOOM_STEP_FRAMES)
+		{
+			boom_frame = 0;
+			if (--boom_volume < 0)
+			{
+				sprite_pointers[0] = player_sprite;
+				crash_anim = CRASH_NONE;
+			}
+		}
+	}
+}
+
 // The original moves the cars and the player in frame_update (and the joystick
 // in weapon_update), so at the speed of the BASIC that calls them
 __interrupt void cars_frame(void)
 {
 	if (!motion_on || motion_hold)
 		return;
+	print_credit();
+	if (crash_anim)
+		crash_frame();
+	booms_frame();
 	if (!player_hold)
 	{
 		player_frame();
@@ -341,24 +442,42 @@ __interrupt void cars_frame(void)
 	crash_test();
 }
 
-static void turbo_keys(void)
+// F1 and F3 turbo on and off, F5 pauses and goes on (on a key press, so the
+// F5 that pauses doesn't end the pause), F7 ends the game at the next
+// collision pass. The original reads F1 and F3 in frame_update and F5 and F7
+// in the collision pass, so a short press could be missed
+__interrupt void keys_frame(void)
 {
-	if (last_key() == KEY_F1)
-		turbo = 1;
-	if (last_key() == KEY_F3)
-		turbo = 0;
-}
-
-static void print_credit(void)
-{
-	// "(c) coplin software" in screen codes on row 23, every frame
-	static const char credit[] = {
-		0x28, 0x03, 0x29, 0x00, 0x03, 0x0f, 0x10, 0x0c, 0x09, 0x0e,
-		0x00, 0x13, 0x0f, 0x06, 0x14, 0x17, 0x01, 0x12, 0x05,
-	};
-	for (char i = 0; i < sizeof(credit); i++)
-		if (credit[i])
-			screen[23 * 40 + 5 + i] = credit[i];
+	static char key_before;
+	char k = last_key();
+	if (!motion_on && !motion_hold)
+	{
+		key_before = k;
+		return;
+	}
+	if (k != key_before)
+	{
+		key_before = k;
+		if (k == KEY_F5)
+		{
+			if (motion_hold)
+				motion_hold = 0;
+			else
+			{
+				motion_hold = 1;
+				music_off();
+			}
+		}
+		else if (k == KEY_F7 && !motion_hold)
+			quit_request = 1;
+	}
+	if (!motion_hold)
+	{
+		if (k == KEY_F1)
+			turbo = 1;
+		if (k == KEY_F3)
+			turbo = 0;
+	}
 }
 
 
@@ -410,7 +529,7 @@ __interrupt void missile_frame(void)
 
 __interrupt void heli_flash_frame(void)
 {
-	if (!heli_flash)
+	if (!heli_flash || motion_hold)
 		return;
 	// the tunnel's headlights take over sprite 5
 	if (headlights_on)
@@ -429,32 +548,46 @@ __interrupt void heli_flash_frame(void)
 	}
 }
 
-// The weapon (fire, guns, smoke) and the joystick are in the raster IRQ
-// (weapon_frame, player_frame), the missile too (missile_frame)
-void weapon_update(void)
+// The title's logo: 3 pixels left a pass of the title loop (sys51900 in line
+// 11070); 178 waits of the loop had 669 passes. Here twice that
+#define TITLE_SPEED     PX_SPEED(6, CYCLES_11070 * 178 / 669)
+
+static volatile char *glide_reg;
+static char glide_to, glide_f;
+static unsigned glide_speed;
+
+void glide(volatile char *reg, char to, unsigned speed)
 {
-	// frame_extras in the original; the headlights follow the player in the IRQ
-	// crash_reset_check: crash_reset_on is never set
-	print_credit();
+	glide_on = 0;
+	glide_reg = reg;
+	glide_to = to;
+	glide_speed = speed;
+	glide_f = 0;
+	glide_on = 1;
 }
 
-// The keys, the cars, the helicopter and the weapon are in the raster IRQ
-// (cars_frame). The original's bug, a frame that ends early while the car from
-// behind goes left 5, skipped the helicopter and the weapon
-void frame_update(void)
+__interrupt void anim_frame(void)
 {
-	turbo_keys();
-	weapon_update();
-}
-
-void turbo_frame(void)
-{
-	if (turbo == 1)
-		frame_update();
-}
-
-void title_scroll(void)
-{
-	for (char i = 0; i < 4; i++)
-		vic.spr_pos[i].x -= 3;
+	static char title_f;
+	if (title_on)
+	{
+		unsigned s = title_f + TITLE_SPEED;
+		title_f = s & 255;
+		char d = s >> 8;
+		for (char i = 0; i < 4; i++)
+			vic.spr_pos[i].x -= d;
+	}
+	if (glide_on)
+	{
+		unsigned s = glide_f + glide_speed;
+		glide_f = s & 255;
+		char d = s >> 8, v = *glide_reg, to = glide_to;
+		if (v < to)
+			v = to - v > d ? v + d : to;
+		else
+			v = v - to > d ? v - d : to;
+		*glide_reg = v;
+		if (v == to)
+			glide_on = 0;
+	}
 }

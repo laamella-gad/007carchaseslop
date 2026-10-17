@@ -1,4 +1,5 @@
 #include "system.h"
+#include "helper.h"
 #include <stdlib.h>
 
 // The KERNAL's text colour and cursor flags
@@ -305,6 +306,14 @@ static char rest;
 
 void pace(unsigned long cycles)
 {
+	// F5 pauses the game (keys_frame) at the next line, until F5 again
+	if (motion_hold)
+	{
+		while (motion_hold)
+			;
+		pace_restart();
+	}
+
 	cycles += rest;
 	rest = cycles & 255;
 	cycles >>= 8;

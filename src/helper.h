@@ -39,25 +39,52 @@ extern volatile char motion_hold;
 extern volatile char motion_on;
 // Set during the crash slide: the player can't steer
 extern volatile char player_hold;
+// Set by the IRQ on F7; the collision pass ends the game
+extern volatile char quit_request;
 
+// The crash in the raster IRQ (crash_frame): the slide, then the explosion.
+// Back to CRASH_NONE at the end
+extern volatile char crash_anim;
+#define CRASH_NONE      0
+#define CRASH_SLIDE     1
+#define CRASH_BOOM      2
+
+// Frames an enemy car explodes, from the hit, before it goes off the road; 0
+// when it doesn't. Set by the IRQ and car_explode, counted down in the IRQ
+extern volatile char car_boom[4];
+#define CAR_BOOM_FRAMES 22
+
+// Set while the title's logo scrolls (in the raster IRQ)
+extern volatile char title_on;
+
+// One sprite coordinate to a value at a speed, in the raster IRQ; glide_on is
+// cleared when it's there
+extern volatile char glide_on;
+void glide(volatile char *reg, char to, unsigned speed);
+
+// A PAL frame
+#define FRAME_CYCLES    19656ul
+// A speed in 1/256 pixels a frame for px pixels in the given cycles
+#define PX_SPEED(px, cycles)    ((unsigned)((px) * 256ul * FRAME_CYCLES / (cycles)))
+
+// Where the original calls its helper: all it did is in the raster IRQ now.
 // sys49155: keys, cars, F1/F3, the car from behind, the helicopter, the weapon
-void frame_update(void);
+inline void frame_update(void) {}
 
 // sys49152: frame_update again when turbo is on
-void turbo_frame(void);
+inline void turbo_frame(void) {}
 
 // sys49561: the weapon, the headlights, the credit and the joystick
-void weapon_update(void);
+inline void weapon_update(void) {}
 
-// sys51900: the title logo 3 pixels left
-void title_scroll(void);
-
-// From the raster IRQ, once a frame: the cars, the player, the helicopter and
-// its bomb, the weapon, the crashes, and
-// the helicopter's explosion flash
+// From the raster IRQ, once a frame: F1, F3, F5 and F7, the cars, the player,
+// the helicopter and its bomb, the weapon, the crashes, the credit, the
+// helicopter's explosion flash, the title's logo and the bonus animation
+__interrupt void keys_frame(void);
 __interrupt void cars_frame(void);
 __interrupt void missile_frame(void);
 __interrupt void heli_flash_frame(void);
+__interrupt void anim_frame(void);
 
 #pragma compile("helper.c")
 
