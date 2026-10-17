@@ -615,8 +615,9 @@ __interrupt void heli_flash_frame(void)
 }
 
 // The title's logo: 3 pixels left a pass of the title loop (sys51900 in line
-// 11070); 178 waits of the loop had 669 passes. Here twice that
-#define TITLE_SPEED     PX_SPEED(6, CYCLES_11070 * 178 / 669)
+// 11070), a pass every 5.8 frames as measured; here twice that, 6 pixels in
+// 5.8 frames, in 1/256 pixels a frame
+#define TITLE_SPEED     264
 
 static volatile char *glide_reg;
 static char glide_to, glide_f;

@@ -274,10 +274,12 @@ Differences from the original:
     between rows; the original takes 1-1.5 frames a row plus about 12.4 frames a pass. The road scrolls
     about as fast as the original's rows, but passes (spawns, the helicopter, sections) come about twice as
     often, so the game is faster and harder: a game has about 2.2 times the collision passes in the same time.
-    The crash text needs no pace either (the crash waits for its animation). The bonus, the track plan, the
-    title and the high scores keep the original's measured timing, but their screens show at once: the lines
-    that draw a screen (the title, the instructions and credits pages, the high score table) only `spend` their
-    time, waited for after the screen is up, where the original builds it up line by line.
+    The crash text needs no pace either (the crash waits for its animation). The bonus and the track plan
+    keep the original's measured timing.
+  - The high scores and the title take no time but the waits for keys and the credits page's delay loop
+    (line 12420, `forx=0to7000`, 419 frames, `wait_frames`): their screens show at once, where the original
+    builds them up line by line (the title and the high score table in about 0.6 seconds each), and the
+    tune and the logo start at once.
   - The tune plays from a raster IRQ (line 251), a note every 6 frames, where the original plays a note per
     `sys51000`, so at the speed of the BASIC around it: about 5.8 frames a note on the title, 6.6 on the high
     score table, slower and uneven during the game. `music_on()` stands where the original calls `sys51000`;
@@ -362,7 +364,7 @@ Differences from the original:
     then the noise (the original turns the gate off and on at once, which the SID may not take as a new
     note), and without the original's volume 0 then 15.
   - The title's logo scrolls in the raster IRQ (`title_on`), at twice the original's average speed (3 pixels a
-    pass of line 11070, about 0.5 pixels a frame; here 1), smoothly.
+    pass of line 11070, a pass every 5.8 frames as measured, about 0.5 pixels a frame; here 264/256), smoothly.
   - The bonus animation's moves are in the raster IRQ (`glide`, `anim_frame`), one sprite coordinate at a
     time at twice the speed the original's loop took, in 8.8 fixed point; `bonus_animation` waits for each. The
     siren steps voice 1 to voice 3's sawtooth once a frame for half the time of line 13014 (162 frames),

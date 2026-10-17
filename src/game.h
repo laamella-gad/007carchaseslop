@@ -32,6 +32,9 @@ extern char plan[11];           // cr(1-7): 1-3 where the road goes next, 6 the 
 // Waits for the next row of the road: a row a frame
 void row_wait(void);
 
+// Waits n frames of the raster IRQ
+void wait_frames(unsigned n);
+
 // Plays rows from to to-1 of a table of src/text.c: the tune if the line
 // plays it, then its PRINT, a row a frame
 void play_rows(const Row *rows, char from, char to);

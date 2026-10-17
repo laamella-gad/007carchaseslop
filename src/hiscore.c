@@ -54,7 +54,6 @@ static void show_table(void)
 		number_at(o + NAME_COLUMN - 1, n);
 		text_at(TABLE_ROW + n, NAME_COLUMN, ink, names[n]);
 		number_at(o + NAME_COLUMN + NAME_LENGTH + SCORE_WIDTH, scores[n]);
-		spend(CYCLES_20051 / 10);
 	}
 }
 
@@ -62,27 +61,18 @@ void hiscore(void)
 {
 	vic.spr_enable = 0;
 	sound_off();
-	LINE(20000);
 	if (!(score > scores[10]))
 	{
-		LINE(20001);
+		pace_restart();
 		return;
 	}
 
 	// Lines 20002-20011 and 20100: the place below the scores the new one
 	// beats, a tie below the old score. The original ENDs on a tie, and its
 	// shift (from 9, not 10) loses the 9th place and keeps the 10th
-	static const unsigned long cycles[10] = {
-		CYCLES_20002, CYCLES_20003, CYCLES_20004, CYCLES_20005, CYCLES_20006,
-		CYCLES_20007, CYCLES_20008, CYCLES_20009, CYCLES_20010, CYCLES_20011,
-	};
 	char x = 10;
-	pace(cycles[0]);
 	while (x > 1 && score > scores[x - 1])
-	{
 		x--;
-		pace(cycles[10 - x]);
-	}
 	for (char n = 10; n > x; n--)
 	{
 		scores[n] = scores[n - 1];
@@ -90,20 +80,15 @@ void hiscore(void)
 	}
 	names[x][0] = 0;
 	scores[x] = score;
-	LINE(20100);
 
 	show_header();
 	vic.color_back = RED;
-	spend(CYCLES_20050);
 	show_table();
 
 	// line 20055: the cursor home, then down to the new entry's row
-	LINE(20055);
 	while (get_key())
 		;
-	pace_restart();
 	tune_restart();
-	LINE(20057);
 	// line 20058: 77 notes of the tune, here while the name is typed (the
 	// original plays them first, 10 seconds)
 	music_notes(77);
@@ -124,17 +109,13 @@ void hiscore(void)
 	name[n] = 0;
 	copy_name(names[x], name);
 	sound_off();
-	pace_restart();
-	LINE(20060);
 
 	show_header();
-	spend(CYCLES_20065);
 	show_table();
 	text_at(19, 7, ink, "HIT ANY KEY TO CONTINUE");
 	print_at(20, 0);
-	LINE(20070);
 	while (!get_key())
 		;
+	// the lines after go on from here
 	pace_restart();
-	LINE(20080);
 }

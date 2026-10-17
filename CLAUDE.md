@@ -54,4 +54,5 @@ Memory: VIC bank 0 as in the original (screen $0400, ROM charset). Sprites are b
 oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs parentheses, `#embed` emits its
 own trailing comma, token pasting inside a nested macro call fails, and a function can keep a static global in a
 register across calls that change it (`input_line` and the printer's `column`, oscar64 issue #424): keep such
-state locally.
+state locally. A count-down loop (`while (n--)`) around a wait for the raster IRQ loses its exit test when
+inlined, and the code after it is dropped: count up (`wait_frames`).
