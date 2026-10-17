@@ -15,7 +15,9 @@
   known (ENTRY for the tables that print before homing it). Strings only the
   tables print are left out.
 - CYCLES_<line> is the time the original spends on a line per pass, without the
-  subroutines it calls (from tools/c64time.c). The rewrite waits that long.
+  subroutines it calls (from tools/c64time.c), and SUM_<line> that of all lines
+  up to it. The rewrite waits that long outside the road, which goes a row a
+  frame.
 """
 import re
 import sys
@@ -323,14 +325,14 @@ def main():
             c.write("static const char s%d[] = {%s};\n" % (num, ",".join("%d" % b for b in row)))
         c.write("const Row rows_%d[%d] = {\n" % (run[0][0], len(run)))
         for num, (ops, lit, newline) in run:
-            c.write("\t{s%d, %d, %d},\t// %d\n" % (num, "tune" in ops, cycles.get(num, 0), num))
+            c.write("\t{s%d, %d},\t// %d\n" % (num, "tune" in ops, num))
         c.write("};\n\n")
 
     h.write("// Made by tools/bas2c.py from 007.bas and build/timing.txt: don't edit\n")
     h.write("#ifndef TEXT_H\n#define TEXT_H\n\n")
     h.write("// cells: what the PRINT writes, for print_cells; tune: the line plays the\n")
     h.write("// tune first (sys51000)\n")
-    h.write("typedef struct {\n\tconst char *cells;\n\tchar tune;\n\tunsigned long cycles;\n} Row;\n\n")
+    h.write("typedef struct {\n\tconst char *cells;\n\tchar tune;\n} Row;\n\n")
     for name, lit in arrays:
         h.write("extern const char %s[];\n" % name)
     h.write("\n")

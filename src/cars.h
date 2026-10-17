@@ -15,13 +15,14 @@ void spawn_car4_bridge(void);       // 125-131
 
 // Line 246 and the like: a flying helicopter that's past x decides at random
 // whether to drop a bomb
-void helicopter_bomb(char x, unsigned long cycles);
+void helicopter_bomb(char x);
 
 // Lines 12-19 (gosub12-15): enemy car 1-4 explodes; points for it
 void car_explode(char car);
 
-// Lines 5-60 (gosub5): the explosions, hits, crashes, F7, F5 and the score
-void collide(void);
+// Lines 5-60 (gosub5): the explosions, hits, crashes, F7, F5 and the score;
+// 1 when the game ends
+char collide(void);
 
 // A crash the raster IRQ found (crash_test): from the collision pass and after
 // each row of the road

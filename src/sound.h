@@ -35,6 +35,9 @@ void sound_siren_start(void);
 void sound_siren(unsigned frames);
 extern volatile char siren_on;
 
+// Counts the frames, in the raster IRQ below the playfield
+extern volatile char frame_count;
+
 #pragma compile("sound.c")
 
 #endif

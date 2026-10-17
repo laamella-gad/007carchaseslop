@@ -37,17 +37,18 @@ original, with comments naming the BASIC lines they port:
 - `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` has the PETSCII
   printer that mimics the KERNAL, keys, INPUT and pacing. `sound.c` has the sounds.
 - `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
-  `bas2c.py` turns runs of them into `rows_N` tables of `{cells, tune, cycles}` that `play_rows` replays.
+  `bas2c.py` turns runs of them into `rows_N` tables of `{cells, tune}` that `play_rows` replays.
   The tables are rendered at build time to screen/colour spans that `print_cells` copies to video memory;
   a table that prints before homing the cursor needs its entry in `ENTRY` in `bas2c.py`.
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
   `hiscore.c`.
 
-Pacing: every ported BASIC line ends with `LINE(n)` = `pace(CYCLES_n)`, the line's measured PAL cycles from
-`build/timing.txt`, waited on with CIA 2 timer B. Waits go only before something that shows or sounds: a run of
-lines that show nothing is one `LINES(a, b)` (all lines a to b of the listing), or `SPEND`/`spend()` adds the
-time without waiting. Call `pace_restart()` after waiting for a key. Lines the timing
-run never reached are 0 or estimated (listed in NOTES.md).
+Pacing: the road (road.c, cars.c, `play_rows`) goes a row a frame: `row_wait()` before each row waits for the
+next raster IRQ frame, and nothing else in the road takes time. Elsewhere (bonus, plan, title, high scores)
+every ported BASIC line ends with `LINE(n)` = `pace(CYCLES_n)`, the line's measured PAL cycles from
+`build/timing.txt`, waited on with CIA 2 timer B; `LINES(a, b)` waits for lines a to b, `SPEND`/`spend()` adds
+time without waiting. Call `pace_restart()` after waiting for a key. Lines the timing run never reached are 0
+or estimated (listed in NOTES.md).
 
 Memory: VIC bank 0 as in the original (screen $0400, ROM charset). Sprites are blocks 40-59 at $0a00-$0eff
 (their own section, `#embed` of the `.bin` files from Deflower's exports), code and data from $0f00 to $a000.

@@ -70,9 +70,12 @@ static __interrupt void sound_frame(void)
 	}
 }
 
+volatile char frame_count;
+
 // Each frame, from the raster IRQ
 static __interrupt void music_frame(void)
 {
+	frame_count++;
 	if (!music_playing || --music_frames)
 		return;
 	music_frames = TUNE_FRAMES;

@@ -20,11 +20,20 @@ extern char crashed;            // te: 1 after a crash, until the end of the col
 extern char player_sprite;      // p1: the player's car, also used for the car from behind
 extern char enemy_sprite;       // p2
 extern unsigned distance;       // d: road drawn in this section
+
+// The passes of d a section lasts, 1.5 times the original's (10, 3 and 30;
+// a curve 5 for 4.5)
+#define ROAD_LENGTH     15      // country, city, tunnel
+#define CURVE_LENGTH    5
+#define BRIDGE_LENGTH   45
 extern char plan_pos;           // p: the section of the plan the road is in
 extern char plan[11];           // cr(1-7): 1-3 where the road goes next, 6 the bonus
 
+// Waits for the next row of the road: a row a frame
+void row_wait(void);
+
 // Plays rows from to to-1 of a table from tools/bas2c.py: the tune if the line
-// plays it, its PRINT, and the line's time
+// plays it, then its PRINT, a row a frame
 void play_rows(const Row *rows, char from, char to);
 
 #pragma compile("game.c")

@@ -188,13 +188,15 @@ cumulative, so the C code can take any time up to the original's. CIA 2 timer A 
 counts its underflows. After a wait for a key, `pace_restart()` starts from now; when the C code is more than
 2000 ticks (half a second) behind, the target catches up instead of rushing.
 
-The C code waits only before something that shows or sounds: a row, a print, a sprite, a sound. The time of
-lines that show nothing is added to the next wait, so what shows keeps the original's timing:
+The road doesn't use the measured times: it goes a row a frame. `row_wait()` (game.c) waits for the next
+frame of the raster IRQ (`frame_count`) before each road row, and the rest of the road code (the collision
+pass, spawns, section tests) takes no time. The original takes 1-1.5 frames a row and about 12.4 frames for a
+collision pass, about 2.5 frames a row on average (country 2.7, tunnel 2.35), so here the road scrolls at the
+speed of the original's rows but without the stall of each pass. `row_wait` restarts the pace, so measured
+lines after a row (the bonus, the track plan) count from it. The crash waits for its animation in the IRQ.
+
 `LINES(a, b)` waits for the lines from a to b of the listing (from `SUM_<line>`, the cycles of all lines up to
-it), `SPEND(a, b)` and `spend()` add their time without waiting. Lines that only test and jump are one wait,
-and so is the collision pass, whose tests all moved to the raster IRQ: it waits before the explosions, the
-helicopter's, the crash and the score. A section's end tests (`d=10`, lines 235-238 and the like) wait for all
-of their lines before testing, so leaving at the first test takes a line or two longer than in the original.
+it), `SPEND(a, b)` and `spend()` add their time without waiting; the bonus and the track plan use them.
 
 Not measured, estimated: the pause delay (line 58, 1001 FOR loops at about 1350 cycles; not needed now, the
 pause goes on a key press) and line 13010 (the player to the left before the bonus, about 2750 cycles a step).
@@ -218,9 +220,9 @@ One file per part, each named after its BASIC lines in the comments:
 | `hiscore.c` | Top 10 | 20000-20110 |
 
 Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turns each run of
-them into a table of `{cells, tune, cycles}` (`rows_200` is lines 200-214) that `play_rows` plays back. The
+them into a table of `{cells, tune}` (`rows_200` is lines 200-214) that `play_rows` plays back. The
 helper calls other than the tune (`sys49152`, `49155`, `49561`) are left out: what they did is in the raster IRQ.
-The other lines are written out in C, each followed by its `LINE(n)` pace.
+The other lines are written out in C; outside the road each is followed by its `LINE(n)` pace.
 
 The tables' PRINTs are printed at build time: `bas2c.py` runs a copy of the printer on them and writes each
 row as the spans of screen codes and colours it leaves (`s200`; a `{clr}` is a clear), then the cursor, colour
@@ -258,6 +260,14 @@ Differences from the original:
   - The kerbs stop the player at or before $50 and $fa from any x, and a car past a kerb (after the crash
     slide) can only move back onto the road.
 - Gameplay changes:
+  - The sections are 1.5 times as long (`ROAD_LENGTH`, `CURVE_LENGTH`, `BRIDGE_LENGTH` in game.h): `d` goes to
+    15 for the country, city and tunnel (10 in the original), 5 for the curves (3) and 45 for the bridge (30).
+  - The road goes a row a frame (`row_wait`), with no time for the collision pass and the other lines
+    between rows; the original takes 1-1.5 frames a row plus about 12.4 frames a pass. The road scrolls
+    about as fast as the original's rows, but passes (spawns, the helicopter, sections) come about twice as
+    often, so the game is faster and harder: a game has about 2.2 times the collision passes in the same time.
+    The crash text needs no pace either (the crash waits for its animation). The bonus, the track plan, the
+    title and the high scores keep the original's measured timing.
   - The tune plays from a raster IRQ (line 251), a note every 6 frames, where the original plays a note per
     `sys51000`, so at the speed of the BASIC around it: about 5.8 frames a note on the title, 6.6 on the high
     score table, slower and uneven during the game. `music_on()` stands where the original calls `sys51000`;
@@ -270,7 +280,7 @@ Differences from the original:
     flies on. Now `weapon_update` tests the same window at each 5 pixel step (only for a flying helicopter, not
     the tunnel's headlights). A hit takes the missile and any falling bomb off the screen and stops the
     helicopter; the raster IRQ flashes it for 40 frames, then it's gone until the next country road (or the
-    plan's helicopter). The collision pass scores the 2000 and plays one explosion, paced like line 57.
+    plan's helicopter). The collision pass scores the 2000 and plays one explosion.
   - The missile moves in the raster IRQ, 1.5 pixels a frame (1 and 2 in turn), 3 with turbo, and stops during
     the F5 pause. The original moves it 5 pixels a `weapon_update`, which comes every 9.1 frames on average at
     the game's speed, anywhere from 1 to 70 (mostly 2-4, with long gaps during the collision pass and the
@@ -327,11 +337,10 @@ Differences from the original:
     pixels a line and paces the steps with BASIC.
   - An enemy car explodes for 22 frames from the hit, then the raster IRQ takes it off the road
     (`car_boom`, `booms_frame`). The original counts its explosion timer (`j1`-`j4`) down a collision pass
-    and takes the car off at 0, so a shot car shows anywhere from 1 to about 90 frames. The timer is gone;
-    lines 45-49 keep their time. The bridge's explosions start the same 22 frames, and a spawn clears them.
+    and takes the car off at 0, so a shot car shows anywhere from 1 to about 90 frames. The timer is gone. The bridge's explosions start the same 22 frames, and a spawn clears them.
   - F1/F3 (turbo), F5 (pause) and F7 (end the game) are read in the raster IRQ (`keys_frame`) while the cars
     move. F5 pauses on a key press and goes on at the next press: no delay loop (line 58), and the main code
-    stops at its next line (`pace` waits during the pause) instead of at the collision pass. F7 sets
+    stops at its next row or line (`row_wait` and `pace` wait during the pause) instead of at the collision pass. F7 sets
     `quit_request`, which the collision pass turns into the game's end where the original reads the key, so
     a short press isn't missed.
   - The credit is written to row 23 by the raster IRQ, every frame while the cars move (`print_credit`), so

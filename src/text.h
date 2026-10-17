@@ -7,7 +7,6 @@
 typedef struct {
 	const char *cells;
 	char tune;
-	unsigned long cycles;
 } Row;
 
 extern const char t0[];
