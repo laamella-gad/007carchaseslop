@@ -36,8 +36,10 @@ int main(void)
 	vic.color_back = BLACK;
 	vic.spr_enable = 0;
 	turbo = 0;
-	print(t2);
-	put(PET_RETURN);
+	// line 2 prints "wait for data transfer" for the original's loader, which
+	// isn't there: only the clear and white
+	put(0x93);
+	put(0x05);
 	vic.spr_multi = 0xff;
 	vic.spr_mcolor0 = BLACK;
 	vic.spr_mcolor1 = RED;

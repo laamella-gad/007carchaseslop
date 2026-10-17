@@ -22,6 +22,9 @@ static char tune_pos, tune_loops = 2;
 
 static volatile char music_playing;
 static char music_frames;
+// Notes left to play, 0 for no end; then the volume goes off when the last
+// note's time is up
+static volatile char notes_left, sound_end;
 
 // The explosion starts with a hard restart in the raster IRQ: the gate off and
 // the envelope 0 for 2 frames, then the noise. The original turns the gate off
@@ -76,6 +79,11 @@ volatile char frame_count;
 static __interrupt void music_frame(void)
 {
 	frame_count++;
+	if (sound_end && !music_playing && !--music_frames)
+	{
+		sound_end = 0;
+		sid.fmodevol = 0;
+	}
 	if (!music_playing || --music_frames)
 		return;
 	music_frames = TUNE_FRAMES;
@@ -93,6 +101,14 @@ static __interrupt void music_frame(void)
 	sid.voices[1].freq = (tune_notes[x] << 8) | tune_notes[x + 1];
 	sid.voices[1].susrel = tune_notes[x + 2];
 	tune_pos = x + 3;
+
+	// the last of the notes: the volume off after it (poke54296,0)
+	if (notes_left && !--notes_left)
+	{
+		music_playing = 0;
+		music_frames = TUNE_FRAMES;
+		sound_end = 1;
+	}
 
 	// at the end: back to note 31, and after 3 times from the top
 	if (tune_pos == TUNE_END)
@@ -142,6 +158,7 @@ void music_init(void)
 void music_on(void)
 {
 	// the first note on the next frame, as the original plays it at once
+	sound_end = 0;
 	if (!music_playing)
 	{
 		music_frames = 1;
@@ -152,6 +169,15 @@ void music_on(void)
 void music_off(void)
 {
 	music_playing = 0;
+	notes_left = 0;
+	sound_end = 0;
+}
+
+void music_notes(char n)
+{
+	music_off();
+	notes_left = n;
+	music_on();
 }
 
 void tune_restart(void)

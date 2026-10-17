@@ -16,6 +16,9 @@ void music_on(void);
 // The tune stops after its current note; the note sounds on
 void music_off(void);
 
+// The tune goes on for n notes, then the volume goes to 0 (in the raster IRQ)
+void music_notes(char n);
+
 // poke51199,2:poke51198,2: the tune from the top
 void tune_restart(void);
 

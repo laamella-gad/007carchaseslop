@@ -79,10 +79,9 @@ void hiscore(void)
 	pace_restart();
 	tune_restart();
 	LINE(20057);
-	// line 20058: 77 notes of the tune
-	music_on();
-	pace(CYCLES_20058);
-	sound_off();
+	// line 20058: 77 notes of the tune, here while the name is typed (the
+	// original plays them first, 10 seconds)
+	music_notes(77);
 
 	// the name is typed over the entry's name column, cleared first (the
 	// original keeps an old 10th place name there, and INPUT reads its rest);
@@ -98,6 +97,7 @@ void hiscore(void)
 		n--;
 	name[n] = 0;
 	copy_name(names[x], name);
+	sound_off();
 	pace_restart();
 	LINE(20060);
 

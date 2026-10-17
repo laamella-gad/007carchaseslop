@@ -246,7 +246,7 @@ branch or jump misses an instruction start.
 Differences from the original:
 
 - Nothing of the loader: the helper's code is C, the sprites are in the PRG (no copy, no `sprites_copied`), the
-  DATA lines are gone.
+  DATA lines are gone, and line 2's "wait for data transfer" isn't printed (only its clear and white).
 - ?ILLEGAL QUANTITY: the crash slide (6000/6001) and the bonus (13010) stop x at 0 instead of stopping the
   program. The left curve's `-20` (1026, 1049) goes to 80 as the line meant.
 - Phase 4 fixes:
@@ -257,6 +257,11 @@ Differences from the original:
     the entries from there move down one, 10th place drops out. The name column of the entry is cleared before
     the input, and the spaces after the name are cut.
   - Smoke stays while ',' is held down, as with the joystick down.
+  - The joystick reads each bit of $dc00 (`joystick()`), so diagonals steer and fire at once, and fire works
+    while steering. The original compares $dc00 with one value per direction, so any two at once do nothing.
+  - High score entry: the name can be typed at once, while the tune plays its 77 notes (`music_notes`, the
+    volume off after the last). The original plays them first (line 20058, about 10 seconds) and only then
+    takes INPUT. Return stops the tune.
   - The kerbs stop the player at or before $50 and $fa from any x, and a car past a kerb (after the crash
     slide) can only move back onto the road.
 - Gameplay changes:
@@ -314,9 +319,12 @@ Differences from the original:
     isn't a crash meanwhile. A car that's already exploding can't be hit again; in the original the guns hit
     it again on the next pass, for another 50 points. A spawn clears the car's `car_shot`. The original's
     frame that ended early while car 4 goes left 5 is gone with `frame_update`.
-  - The crashes are tested in the raster IRQ too (`crash_test`): an enemy car within 18 pixels of the player in
-    x at y 140-180 that isn't exploding (the original: whose explosion timer is 0 or less), or the bomb within
-    10 pixels at y 140-180. The original tests once a collision pass, about every 45 frames, so a car could
+  - The crashes are tested in the raster IRQ too (`crash_test`): an enemy car whose coloured pixels touch the
+    player's (the box of each shape, black outline left out: `shape_box`) and that isn't exploding (the
+    original: within 18 pixels in x at y 140-180, up to 4 pixels apart across and 13 along, and whose explosion
+    timer is 0 or less), or the bomb, also by its coloured pixels (the original: its sprite x within 10 of the
+    player's at y 140-180, off to the left, so a bomb 6 pixels left of the car hit and one over the car's
+    right half missed). The original tests once a collision pass, about every 45 frames, so a car could
     drive through the player between two. The IRQ sets `crash_pending`; the main code runs the crash
     (`crash_check`) after each row `play_rows` prints and in the collision pass where the tests were. A
     crash after a row keeps the printer's cursor and colour (`print_save`, `print_restore`) for the next row,

@@ -15,13 +15,19 @@ volatile char quit_request, crash_anim, title_on, glide_on;
 volatile char on_bridge, bridge_edge;
 volatile char car_boom[4];
 
-// Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
-// direction or fire at a time counts
-#define JOY_FIRE    0x6f
-#define JOY_UP      0x7e
-#define JOY_DOWN    0x7d
-#define JOY_LEFT    0x7b
-#define JOY_RIGHT   0x77
+// Joystick in port 2: the bits of $dc00 that go low. The original compares
+// $dc00 with one value each, so only one direction or fire at a time counts:
+// no diagonals, no fire while steering
+#define JOY_UP      0x01
+#define JOY_DOWN    0x02
+#define JOY_LEFT    0x04
+#define JOY_RIGHT   0x08
+#define JOY_FIRE    0x10
+
+static char joystick(void)
+{
+	return ~cia1.pra & 0x1f;
+}
 
 #define GUNS_Y      120     // line 40 pokes it into fire_guns and fire_missile
 #define SMOKE_Y     180
@@ -169,10 +175,10 @@ static void car_down(char car, int vx)
 static void player_frame(void)
 {
 	char step = turbo ? 2 * PLAYER_SPEED : PLAYER_SPEED;
-	char k = last_key(), j = cia1.pra;
-	if (k == KEY_M || j == JOY_RIGHT)
+	char k = last_key(), j = joystick();
+	if (k == KEY_M || (j & JOY_RIGHT))
 		player_right(step);
-	else if (k == KEY_Z || j == JOY_LEFT)
+	else if (k == KEY_Z || (j & JOY_LEFT))
 		player_left(step);
 }
 
@@ -265,12 +271,12 @@ static void weapon_hits(void)
 // following the player while held, and the hits
 static void weapon_frame(void)
 {
-	char k = last_key(), j = cia1.pra;
-	if (k == KEY_SPACE || j == JOY_FIRE)
+	char k = last_key(), j = joystick();
+	if (k == KEY_SPACE || (j & JOY_FIRE))
 		fire_guns();
-	if (k == KEY_PERIOD || j == JOY_UP)
+	if (k == KEY_PERIOD || (j & JOY_UP))
 		fire_missile();
-	if (k == KEY_COMMA || j == JOY_DOWN)
+	if (k == KEY_COMMA || (j & JOY_DOWN))
 		fire_smoke();
 
 	if (weapon_state == WEAPON_GUNS && ++gun_frames >= (turbo ? GUN_FRAMES / 2 : GUN_FRAMES))
@@ -288,7 +294,7 @@ static void weapon_frame(void)
 		// original tests only the joystick, so smoke from the key ends on the
 		// next frame)
 		vic.spr_pos[7].x = vic.spr_pos[0].x;
-		if (j != JOY_DOWN && k != KEY_COMMA)
+		if (!(j & JOY_DOWN) && k != KEY_COMMA)
 		{
 			vic.spr_pos[7].x = 0;
 			weapon_state = WEAPON_FREE;
@@ -297,30 +303,68 @@ static void weapon_frame(void)
 	weapon_hits();
 }
 
+// The coloured pixels of the cars' shapes in the sprite: x from left to right,
+// y from top to bottom. The black outline (multicolour 1) doesn't show on the
+// black road
+typedef struct
+{
+	char left, right, top, bottom;
+} Box;
+
+static const Box box_player = {4, 19, 1, 15};      // SPR_PLAYER, also car 4
+static const Box box_enemy = {6, 17, 0, 13};       // SPR_ENEMY
+static const Box box_boat = {2, 21, 1, 15};        // SPR_BRIDGE_PLAYER
+static const Box box_boat_enemy = {8, 17, 4, 19};  // SPR_BRIDGE_ENEMY
+static const Box box_bomb = {0, 7, 9, 13};          // SPR_BOMB
+
+static const Box *shape_box(char shape)
+{
+	switch (shape)
+	{
+	case SPR_ENEMY: return &box_enemy;
+	case SPR_BRIDGE_PLAYER: return &box_boat;
+	case SPR_BRIDGE_ENEMY: return &box_boat_enemy;
+	case SPR_BOMB: return &box_bomb;
+	default: return &box_player;
+	}
+}
+
 // An enemy car or the bomb against the player, from lines 20-38 of the
-// original's collision pass: a car within 18 pixels in x and at y 140-180 that
-// isn't exploding, or the bomb within 10 pixels at y 140-180. The original tests
-// once a pass, so a car could drive through the player between two
+// original's collision pass: a car that isn't exploding or the bomb, whose
+// coloured pixels touch the player's. The original takes a car within 18
+// pixels in x at y 140-180, a box larger than the cars (up to 4 pixels apart
+// across, 13 along), and the bomb's sprite x within 10 of the player's at y
+// 140-180, which is off to the left: it hits a bomb 6 pixels left of the car
+// and misses one over the car's right half. It tests once a pass, so a car
+// could also drive through the player between two
+static char touches(char sprite, int x, int y, const Box *p)
+{
+	const Box *e = shape_box(sprite_pointers[sprite]);
+	int cx = vic.spr_pos[sprite].x;
+	int cy = vic.spr_pos[sprite].y;
+	return cx + e->left <= x + p->right && cx + e->right >= x + p->left &&
+		cy + e->top <= y + p->bottom && cy + e->bottom >= y + p->top;
+}
+
 static void crash_test(void)
 {
 	if (player_hold || crash_pending)
 		return;
 	int x = vic.spr_pos[0].x;
+	int y0 = vic.spr_pos[0].y;
+	const Box *p = shape_box(sprite_pointers[0]);
 	for (char car = 1; car <= 4; car++)
 	{
 		if (car_shot[car - 1] || sprite_pointers[car] == SPR_EXPLOSION)
 			continue;
-		int cx = vic.spr_pos[car].x;
-		char y = vic.spr_pos[car].y;
-		if (cx > x - 18 && cx < x + 18 && y > 140 && y < 180)
+		if (touches(car, x, y0, p))
 		{
 			crash_pending = 1;
 			return;
 		}
 	}
-	int bx = vic.spr_pos[6].x;
-	char by = vic.spr_pos[6].y;
-	if (bx > 0 && bx > x - 10 && bx < x + 10 && by > 140 && by < 180)
+	// the bomb at x 0 is off the screen
+	if (vic.spr_pos[6].x && touches(6, x, y0, p))
 		crash_pending = 1;
 	// lines 2216 and 2240: into the bridge's edge. The original tests twice a
 	// pass of the bridge loop, so the player could get across between two
