@@ -1,4 +1,4 @@
-// The C64 as the game uses it: screen, sprites, a PETSCII printer, keys and pacing
+// The C64 as the game uses it: screen, sprites, a PETSCII printer, keys
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
@@ -61,7 +61,7 @@ inline char last_key(void) { return PEEK(0xc5); }
 #define PET_RETURN  13
 #define PET_RIGHT   29
 
-// Sets up the pacing timer and the printer
+// Sets up the printer
 void system_init(void);
 
 // Prints PETSCII like the KERNAL: colour codes, reverse, cursor moves, home, clear,
@@ -110,18 +110,6 @@ char wait_key(void);
 
 // 0 to n-1
 char rnd(char n);
-
-// The original's speed: pace(c) waits until c cycles have passed since the last
-// pace. The time comes from the measured BASIC lines (src/text.h), so the
-// work in between can take any time shorter than that
-void pace(unsigned long cycles);
-
-// Adds cycles to the time the next pace waits for, without waiting: for lines
-// that show nothing, so their time goes before the next thing that shows
-void spend(unsigned long cycles);
-
-// Starts pacing from now, after waiting for a key
-void pace_restart(void);
 
 #pragma compile("system.c")
 

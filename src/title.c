@@ -159,8 +159,6 @@ void title(void)
 	print_set_ink(YELLOW);
 	vic.spr_expand_x = 0;
 	vic.spr_expand_y = 0x80;
-	// the track plan's measured lines go on from here
-	pace_restart();
 	plan_clear_colours();
 	plan_new();
 }

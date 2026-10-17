@@ -41,12 +41,8 @@ original, with comments naming the BASIC lines they port:
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
   `hiscore.c`.
 
-Pacing: the road (road.c, cars.c, `play_rows`) goes a row a frame: `row_wait()` before each row waits for the
-next raster IRQ frame, and nothing else in the road takes time. Elsewhere (bonus, plan, title, high scores)
-every ported BASIC line ends with `LINE(n)` = `pace(CYCLES_n)`, the line's measured PAL cycles from
-`build/timing.txt`, waited on with CIA 2 timer B; `LINES(a, b)` waits for lines a to b, `SPEND`/`spend()` adds
-time without waiting. Call `pace_restart()` after waiting for a key. Lines the timing run never reached are 0
-or estimated (listed in NOTES.md).
+Timing: everything goes by frames of the raster IRQ (`frame_count`). The road goes a row a frame (`row_wait()`
+before each row); the screens show at once and wait for a key or fire (`wait_key`).
 
 Memory: VIC bank 0 as in the original (screen $0400, ROM charset). Sprites are blocks 40-59 at $0a00-$0eff
 (their own section, `#embed` of the `.bin` files from Deflower's exports), code and data from $0f00 to $a000.

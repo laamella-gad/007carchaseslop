@@ -11,14 +11,7 @@ static char row, column, ink = 14, reverse;
 
 void system_init(void)
 {
-	// CIA 2 timer A runs every 256 cycles, timer B counts its underflows
-	cia2.ta = 255;
-	cia2.tb = 0xffff;
-	cia2.cra = 0x11;
-	cia2.crb = 0x51;
-
 	ink = PEEK(KERNAL_COLOUR);
-	pace_restart();
 }
 
 static void scroll(void)
@@ -400,61 +393,4 @@ char wait_key(void)
 char rnd(char n)
 {
 	return (unsigned)rand() % n;
-}
-
-// Timer B counts down by 1 every 256 cycles
-static unsigned ticks(void)
-{
-	unsigned t;
-	do
-		t = cia2.tb;
-	while (t != cia2.tb);
-	return ~t;
-}
-
-static unsigned target;
-static char rest;
-
-void spend(unsigned long cycles)
-{
-	cycles += rest;
-	rest = cycles & 255;
-	cycles >>= 8;
-
-	// more than 8 s ahead can't be compared in 16 bits: wait in steps
-	while (cycles > 0x4000)
-	{
-		target += 0x4000;
-		cycles -= 0x4000;
-		while ((int)(target - ticks()) > 0)
-			;
-	}
-	target += (unsigned)cycles;
-}
-
-void pace(unsigned long cycles)
-{
-	// F5 pauses the game (keys_frame) at the next line, until F5 again
-	if (motion_hold)
-	{
-		while (motion_hold)
-			;
-		pace_restart();
-	}
-
-	spend(cycles);
-
-	// far behind (half a second, on a slow line): don't rush to catch up
-	unsigned now = ticks();
-	if ((int)(now - target) > 2000)
-		target = now;
-
-	while ((int)(target - ticks()) > 0)
-		;
-}
-
-void pace_restart(void)
-{
-	target = ticks();
-	rest = 0;
 }

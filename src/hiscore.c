@@ -62,10 +62,7 @@ void hiscore(void)
 	vic.spr_enable = 0;
 	sound_off();
 	if (!(score > scores[10]))
-	{
-		pace_restart();
 		return;
-	}
 
 	// Lines 20002-20011 and 20100: the place below the scores the new one
 	// beats, a tie below the old score. The original ENDs on a tie, and its
@@ -115,6 +112,4 @@ void hiscore(void)
 	text_at(19, 7, ink, "PRESS FIRE TO CONTINUE");
 	print_at(20, 0);
 	wait_key();
-	// the lines after go on from here
-	pace_restart();
 }

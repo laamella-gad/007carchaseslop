@@ -164,45 +164,16 @@ the helicopter 5, the slower car directions 2 or 3.
 
 ## Timing
 
-The game has no frame sync: it runs as fast as BASIC goes, one `sys` of the helper between PRINTs. So the
-rewrite takes its time from the original, line by line.
+Everything goes by frames of the raster IRQ (`frame_count`). The road goes a row a frame: `row_wait()` (game.c)
+waits for the next frame before each row, and the rest of the road code (the collision pass, spawns, section
+tests) takes no time. The bonus animation moves its sprites in the IRQ at 2 pixels a frame and waits for
+frames between the steps (`wait_frames`). The screens (title, instructions, high scores, track plan) show at
+once and wait for a key or fire.
 
-The road no longer uses these times; the rest of the game does. They were measured once with `tools/c64time.c`
-and turned into `src/text.c`/`text.h` with `tools/bas2c.py`; both are deleted now and are in the git history up
-to commit eb9235c. `c64time.c` (about 3.5 minutes) loaded `007.vsf` with the ROMs and emulated the CPU, the
-KERNAL's 60 Hz IRQ and the keyboard. It held a random key (M, Z, space, '.', ',' or none) for 400000 cycles at
-a time and put a key in the buffer where the game waits for one (space or 'I' at the title), for 20000
-emulated seconds, without the joystick, and wrote `build/timing.txt`: per BASIC line
-(CURLIN, $39/$3a) the number of passes and the average, minimum and maximum PAL cycles per pass, without the
-time spent in the subroutines it calls (a line left with GOSUB, whose token $8d is on the stack, doesn't end a
-pass). It restarted from the snapshot when the game stops: at READY after an error ($a474) and at the `end` in
-line 20049. It also printed into a shadow of the screen with a simple PETSCII printer and compared it to the
-real screen, which shows that the rewrite's printer (no logical lines) draws what the KERNAL draws.
-
-A pass is from entering a line to leaving it, so a line that loops on itself (11070, a FOR loop in one line)
-counts the whole loop as one pass. Those are divided by the number of loops in the rewrite: 11070 by the
-title_scroll calls per wait (669 in 178 waits), 20058 by 77, the bonus lines 13012-13029 by their FOR counts.
-
-`bas2c.py` wrote `CYCLES_<line>` for every line (0 for the lines the run never reached).
-`pace(CYCLES_n)` in the C code waits until that much time has passed since the last pace: the target is
-cumulative, so the C code can take any time up to the original's. CIA 2 timer A counts 256 cycles, timer B
-counts its underflows. After a wait for a key, `pace_restart()` starts from now; when the C code is more than
-2000 ticks (half a second) behind, the target catches up instead of rushing.
-
-The road doesn't use the measured times: it goes a row a frame. `row_wait()` (game.c) waits for the next
-frame of the raster IRQ (`frame_count`) before each road row, and the rest of the road code (the collision
-pass, spawns, section tests) takes no time. The original takes 1-1.5 frames a row and about 12.4 frames for a
-collision pass, about 2.5 frames a row on average (country 2.7, tunnel 2.35), so here the road scrolls at the
-speed of the original's rows but without the stall of each pass. The crash waits for its animation in the
-IRQ.
-
-`LINES(a, b)` waits for the lines from a to b of the listing (from `SUM_<line>`, the cycles of all lines up to
-it), `SPEND(a, b)` and `spend()` add their time without waiting. Only the start of a game (lines 39-43, in
-`main.c`) still uses them.
-
-Not measured, estimated: the pause delay (line 58, 1001 FOR loops at about 1350 cycles; not needed now, the
-pause goes on a key press) and line 13010 (the player to the left before the bonus, about 2750 cycles a step,
-7 pixels a frame).
+The original has no frame sync and runs as fast as its BASIC goes. Its times were measured once with an
+emulator (`tools/c64time.c`, in the git history up to commit eb9235c): 1-1.5 frames a road row and about 12.4
+frames a collision pass, so here the road scrolls at the speed of the original's rows but without the stall
+of each pass.
 
 ## The rewrite
 
@@ -225,7 +196,7 @@ One file per part, each named after its BASIC lines in the comments:
 Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turned each run of
 them into a table of `{cells, tune}` (`rows_200` is lines 200-214) that `play_rows` plays back. The
 helper calls other than the tune (`sys49152`, `49155`, `49561`) are left out: what they did is in the raster IRQ.
-The other lines are written out in C; outside the road each is followed by its `LINE(n)` pace.
+The other lines are written out in C.
 
 The tables' PRINTs were printed ahead: `bas2c.py` ran a copy of the printer on them and wrote each
 row as the spans of screen codes and colours it leaves (`s200`; a `{clr}` is a clear), then the cursor, colour
@@ -276,7 +247,7 @@ Differences from the original:
     between rows; the original takes 1-1.5 frames a row plus about 12.4 frames a pass. The road scrolls
     about as fast as the original's rows, but passes (spawns, the helicopter, sections) come about twice as
     often, so the game is faster and harder: a game has about 2.2 times the collision passes in the same time.
-    The crash text needs no pace either (the crash waits for its animation).
+    The crash text takes no time either (the crash waits for its animation).
   - The track plan takes no time: it shows at once, where the original draws it piece by piece (about 3
     seconds with the clearing of its area). The bonus has no measured line times either: the animation's
     moves all go at 2 pixels a frame (the original's loops take 1-7, the player's slide to the left the
@@ -361,7 +332,7 @@ Differences from the original:
     and takes the car off at 0, so a shot car shows anywhere from 1 to about 90 frames. The timer is gone. The bridge's explosions start the same 22 frames, and a spawn clears them.
   - F1/F3 (turbo), F5 (pause) and F7 (end the game) are read in the raster IRQ (`keys_frame`) while the cars
     move. F5 pauses on a key press and goes on at the next press: no delay loop (line 58), and the main code
-    stops at its next row or line (`row_wait` and `pace` wait during the pause) instead of at the collision pass. F7 sets
+    stops at its next row or line (`row_wait` waits during the pause) instead of at the collision pass. F7 sets
     `quit_request`, which the collision pass turns into the game's end where the original reads the key, so
     a short press isn't missed.
   - The credit is written to row 23 by the raster IRQ, every frame while the cars move (`print_credit`), so

@@ -23,8 +23,6 @@ void row_wait(void)
 	while (frame_count == row_frame)
 		;
 	row_frame = frame_count;
-	// the measured lines that come after go on from here
-	pace_restart();
 }
 
 void show_rows(const Row *rows, char from, char to)

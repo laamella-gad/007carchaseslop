@@ -4,15 +4,6 @@
 
 #include "text.h"
 
-// The time of BASIC line n in the original
-#define LINE(n)     pace(CYCLES_##n)
-
-// The time of lines a to b, all the lines in between in the listing (each
-// pastes on its own: oscar64 can't paste in a macro inside a macro)
-#define TIME(a, b)  (SUM_##b - SUM_##a + CYCLES_##a)
-#define LINES(a, b) pace(SUM_##b - SUM_##a + CYCLES_##a)
-#define SPEND(a, b) spend(SUM_##b - SUM_##a + CYCLES_##a)
-
 extern long score;              // sc
 extern long bonus_points;       // bp: 1000 more for each bonus
 extern signed char lives;       // ch: -1 ends the game (no lives left, or F7)

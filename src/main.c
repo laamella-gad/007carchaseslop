@@ -52,19 +52,14 @@ int main(void)
 		player_sprite = SPR_PLAYER;
 		enemy_sprite = SPR_ENEMY;
 		distance = 0;
-		LINE(39);
 		vic.spr_color[7] = YELLOW;
 		vic.spr_expand_y = 0x80;
-		LINE(40);
 		sprite_pointers[6] = SPR_BOMB;
-		LINE(41);
 		// the credit row
 		for (char i = 0; i < 21; i++)
 			colour_ram[23 * 40 + 5 + i] = YELLOW;
-		LINE(42);
 		plan_road = ROAD_COUNTRY;
 		hiscore();
-		LINE(43);
 
 		title();
 		game();
