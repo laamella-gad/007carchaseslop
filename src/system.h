@@ -73,9 +73,6 @@ void print(const char *s);
 // BASIC's print of a number: a space or '-', the digits, then a cursor right
 void print_number(long n);
 
-// BASIC's ',' in print: on to the next 10 column zone
-void print_comma(void);
-
 // The cursor, colour and reverse, kept and put back around a print that comes
 // between two rows that go on from each other
 void print_save(void);
@@ -88,9 +85,10 @@ void print_cells(const char *cells);
 // The next key in the keyboard buffer (GETIN), 0 if none
 char get_key(void);
 
-// BASIC's input: "? ", then a line typed at the cursor, up to RETURN. Like the
-// screen editor it reads back the whole screen line, so what was on it after the
-// typed text is part of the input. At most max characters
+// BASIC's input without the "? ": a line typed at the cursor, up to RETURN, at
+// most max characters (the KERNAL takes up to the end of the screen row). Like
+// the screen editor it reads back the whole screen line, so what was on it
+// after the typed text is part of the input
 void input_line(char *s, char max);
 
 // 0 to n-1

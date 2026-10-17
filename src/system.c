@@ -259,13 +259,6 @@ void print_cells(const char *p)
 		reverse = state & 0x80;
 }
 
-void print_comma(void)
-{
-	char n = 10 - column % 10;
-	while (n--)
-		put(PET_RIGHT);
-}
-
 char get_key(void)
 {
 	return __asm {
@@ -289,7 +282,6 @@ static char petscii(char sc)
 
 void input_line(char *s, char max)
 {
-	print("? ");
 	char start = column;
 	unsigned line = row * 40;
 	for (;;)
@@ -313,7 +305,7 @@ void input_line(char *s, char max)
 				put(0x9d);
 			}
 		}
-		else if (((c >= 0x20 && c < 0x60) || (c >= 0xc1 && c <= 0xda)) && column < 39)
+		else if (((c >= 0x20 && c < 0x60) || (c >= 0xc1 && c <= 0xda)) && column < 39 && column < start + max)
 			put(c);
 	}
 

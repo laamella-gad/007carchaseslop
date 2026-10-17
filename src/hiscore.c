@@ -13,16 +13,45 @@ static void copy_name(char *d, const char *s)
 		;
 }
 
-// Lines 20051 and 20066
+// The table's columns: the rank right-aligned up to column 3, the name from
+// column 5, the score right-aligned up to column 25
+#define NAME_COLUMN     5
+#define NAME_LENGTH     8
+#define SCORE_WIDTH     13
+
+// n right-aligned in width characters
+static void print_right(long n, char width)
+{
+	char digits[11], i = 0;
+	do
+	{
+		digits[i++] = '0' + n % 10;
+		n /= 10;
+	} while (n);
+	while (width > i)
+	{
+		put(' ');
+		width--;
+	}
+	while (i)
+		put(digits[--i]);
+}
+
+// Lines 20051 and 20066. The original prints two {rght}, the name and the
+// score with two commas between, so the score lands at column 20 or 30 by the
+// name's length; here in columns, with the rank in front
 static void show_table(void)
 {
 	for (char n = 1; n <= 10; n++)
 	{
-		print(t20051);
-		print(names[n]);
-		print_comma();
-		print_comma();
-		print_number(scores[n]);
+		print_right(n, NAME_COLUMN - 1);
+		put(' ');
+		char i = 0;
+		while (names[n][i])
+			put(names[n][i++]);
+		while (i++ < NAME_LENGTH)
+			put(' ');
+		print_right(scores[n], SCORE_WIDTH);
 		put(PET_RETURN);
 		pace(CYCLES_20051 / 10);
 	}
@@ -85,11 +114,13 @@ void hiscore(void)
 
 	// the name is typed over the entry's name column, cleared first (the
 	// original keeps an old 10th place name there, and INPUT reads its rest);
-	// spaces after the name are cut
-	for (char i = 2; i < 10; i++)
+	// spaces after the name are cut. No "? ": it would cover the rank
+	for (char i = NAME_COLUMN; i < NAME_COLUMN + NAME_LENGTH; i++)
 		screen[(2 + x) * 40 + i] = ' ';
-	char name[9];
-	input_line(name, 8);
+	for (char i = 0; i < NAME_COLUMN; i++)
+		put(PET_RIGHT);
+	char name[NAME_LENGTH + 1];
+	input_line(name, NAME_LENGTH);
 	char n = 0;
 	while (name[n])
 		n++;

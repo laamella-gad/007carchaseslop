@@ -43,7 +43,6 @@ extern const char t12001[];
 extern const char t12002[];
 extern const char t12100[];
 extern const char t20050[];
-extern const char t20051[];
 extern const char t20055[];
 extern const char t20055_2[];
 extern const char t20070[];

@@ -371,5 +371,9 @@ Differences from the original:
   - The bridge's edge, x 171-199, is tested every frame in the raster IRQ (`bridge_edge`, in `crash_test`)
     from the first test at line 2216 to the end of the bridge, and goes through `crash_pending` like the
     other crashes. The original tests it twice a pass (lines 2216/2240), so a player could cross it between two.
-- INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
+- INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys;
+  no "? " prompt, and at most the 8 characters the name keeps can be typed.
+- The high score table is in columns: the rank 1-10 right-aligned to column 3, the name from column 5, the
+  score right-aligned to column 25. The original prints `{rght}{rght}` name`,,`score (line 20051), so the
+  score lands at column 20, or 30 after an 8 letter name.
 - The printer has no logical lines (the game never links two rows).
