@@ -52,4 +52,6 @@ Memory: VIC bank 0 as in the original (screen $0400, ROM charset). Sprites are b
 (their own section, `#embed` of the `.bin` files from Deflower's exports), code and data from $0f00 to $a000.
 
 oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs parentheses, `#embed` emits its
-own trailing comma, and token pasting inside a nested macro call fails.
+own trailing comma, token pasting inside a nested macro call fails, and a function can keep a static global in a
+register across calls that change it (`input_line` and the printer's `column`, oscar64 issue #424): keep such
+state locally.

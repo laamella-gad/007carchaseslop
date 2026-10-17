@@ -19,40 +19,66 @@ static void copy_name(char *d, const char *s)
 #define NAME_LENGTH     8
 #define SCORE_WIDTH     13
 
-// n right-aligned in width characters
-static void print_right(long n, char width)
+// Written straight to the screen in the colour the printer has (the original
+// PRINTs with the KERNAL's colour)
+static char ink;
+
+static void put_at(unsigned o, char c)
 {
-	char digits[11], i = 0;
-	do
-	{
-		digits[i++] = '0' + n % 10;
-		n /= 10;
-	} while (n);
-	while (width > i)
-	{
-		put(' ');
-		width--;
-	}
-	while (i)
-		put(digits[--i]);
+	// PETSCII to screen code, as the printer: letters to 1-26, digits, space
+	// and punctuation as they are, the shifted characters a name can have
+	if (c >= 0xc0)
+		c -= 0x80;
+	else if (c >= 0xa0)
+		c -= 0x40;
+	else if (c >= 0x40)
+		c -= 0x40;
+	screen[o] = c;
+	colour_ram[o] = ink;
 }
 
-// Lines 20051 and 20066. The original prints two {rght}, the name and the
-// score with two commas between, so the score lands at column 20 or 30 by the
-// name's length; here in columns, with the rank in front
+static void text_at(char row, char column, const char *s)
+{
+	unsigned o = row * 40 + column;
+	while (*s)
+		put_at(o++, *s++);
+}
+
+// n right-aligned, ending before offset o
+static void number_at(unsigned o, long n)
+{
+	do
+	{
+		put_at(--o, '0' + n % 10);
+		n /= 10;
+	} while (n);
+}
+
+// Line 20050/20065: {clr}{down}{rght} top 10 agents :enter your code{down}
+static void show_header(void)
+{
+	ink = print_ink();
+	for (unsigned i = 0; i < 1000; i++)
+	{
+		screen[i] = ' ';
+		colour_ram[i] = ink;
+	}
+	text_at(1, 1, " TOP 10 AGENTS :ENTER YOUR CODE");
+}
+
+// Lines 20051 and 20066, rows 3-12. The original prints two {rght}, the name
+// and the score with two commas between, so the score lands at column 20 or
+// 30 by the name's length; here in columns, with the rank in front
+#define TABLE_ROW       2
+
 static void show_table(void)
 {
 	for (char n = 1; n <= 10; n++)
 	{
-		print_right(n, NAME_COLUMN - 1);
-		put(' ');
-		char i = 0;
-		while (names[n][i])
-			put(names[n][i++]);
-		while (i++ < NAME_LENGTH)
-			put(' ');
-		print_right(scores[n], SCORE_WIDTH);
-		put(PET_RETURN);
+		unsigned o = (TABLE_ROW + n) * 40;
+		number_at(o + NAME_COLUMN - 1, n);
+		text_at(TABLE_ROW + n, NAME_COLUMN, names[n]);
+		number_at(o + NAME_COLUMN + NAME_LENGTH + SCORE_WIDTH, scores[n]);
 		pace(CYCLES_20051 / 10);
 	}
 }
@@ -91,17 +117,12 @@ void hiscore(void)
 	scores[x] = score;
 	LINE(20100);
 
-	print(t20050);
-	put(PET_RETURN);
+	show_header();
 	vic.color_back = RED;
 	LINE(20050);
 	show_table();
 
-	// the cursor home, then down to the new entry's row
-	print(t20055);
-	put(PET_RETURN);
-	for (char n = 0; n < x; n++)
-		print(t20055_2);
+	// line 20055: the cursor home, then down to the new entry's row
 	LINE(20055);
 	while (get_key())
 		;
@@ -116,9 +137,8 @@ void hiscore(void)
 	// original keeps an old 10th place name there, and INPUT reads its rest);
 	// spaces after the name are cut. No "? ": it would cover the rank
 	for (char i = NAME_COLUMN; i < NAME_COLUMN + NAME_LENGTH; i++)
-		screen[(2 + x) * 40 + i] = ' ';
-	for (char i = 0; i < NAME_COLUMN; i++)
-		put(PET_RIGHT);
+		screen[(TABLE_ROW + x) * 40 + i] = ' ';
+	print_at(TABLE_ROW + x, NAME_COLUMN);
 	char name[NAME_LENGTH + 1];
 	input_line(name, NAME_LENGTH);
 	char n = 0;
@@ -132,12 +152,11 @@ void hiscore(void)
 	pace_restart();
 	LINE(20060);
 
-	print(t20050);
-	put(PET_RETURN);
+	show_header();
 	LINE(20065);
 	show_table();
-	print(t20070);
-	put(PET_RETURN);
+	text_at(19, 7, "HIT ANY KEY TO CONTINUE");
+	print_at(20, 0);
 	LINE(20070);
 	while (!get_key())
 		;

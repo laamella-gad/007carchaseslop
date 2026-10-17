@@ -163,6 +163,18 @@ void put(char c)
 	}
 }
 
+void print_at(char r, char c)
+{
+	row = r;
+	column = c;
+	reverse = 0;
+}
+
+char print_ink(void)
+{
+	return ink;
+}
+
 void print(const char *s)
 {
 	while (*s)
@@ -282,11 +294,14 @@ static char petscii(char sc)
 
 void input_line(char *s, char max)
 {
-	char start = column;
+	// The position is kept here: oscar64 (1.32.273) keeps column in a register
+	// across the calls to put, so a test of column doesn't see it move
+	// (https://github.com/drmortalwombat/oscar64/issues/424)
+	char start = column, at = start;
 	unsigned line = row * 40;
 	for (;;)
 	{
-		unsigned o = line + column;
+		unsigned o = line + at;
 		// a blinking cursor, as the KERNAL's
 		char under = screen[o];
 		char c;
@@ -298,15 +313,19 @@ void input_line(char *s, char max)
 			break;
 		if (c == 0x14)
 		{
-			if (column > start)
+			if (at > start)
 			{
 				put(0x9d);
 				put(' ');
 				put(0x9d);
+				at--;
 			}
 		}
-		else if (((c >= 0x20 && c < 0x60) || (c >= 0xc1 && c <= 0xda)) && column < 39 && column < start + max)
+		else if (((c >= 0x20 && c < 0x60) || (c >= 0xc1 && c <= 0xda)) && at < 39 && at < start + max)
+		{
 			put(c);
+			at++;
+		}
 	}
 
 	// As the screen editor: the whole line from where the typing started,

@@ -70,6 +70,10 @@ void system_init(void);
 void put(char c);
 void print(const char *s);
 
+// The cursor to row r, column c, reverse off; and the colour prints use
+void print_at(char r, char c);
+char print_ink(void);
+
 // BASIC's print of a number: a space or '-', the digits, then a cursor right
 void print_number(long n);
 

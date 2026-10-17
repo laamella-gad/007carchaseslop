@@ -375,5 +375,6 @@ Differences from the original:
   no "? " prompt, and at most the 8 characters the name keeps can be typed.
 - The high score table is in columns: the rank 1-10 right-aligned to column 3, the name from column 5, the
   score right-aligned to column 25. The original prints `{rght}{rght}` name`,,`score (line 20051), so the
-  score lands at column 20, or 30 after an 8 letter name.
+  score lands at column 20, or 30 after an 8 letter name. The table screen is written straight to screen and
+  colour RAM (in the printer's colour, as the KERNAL's) instead of PRINTed; only the name input uses the printer.
 - The printer has no logical lines (the game never links two rows).
