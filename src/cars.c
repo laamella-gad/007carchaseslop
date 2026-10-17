@@ -1,6 +1,6 @@
 #include "cars.h"
 #include "game.h"
-#include "helper.h"
+#include "frame.h"
 #include "sound.h"
 #include "system.h"
 
@@ -54,7 +54,7 @@ void spawn_car4(void)
 void spawn_helicopter(void)
 {
 	// the state last, so the IRQ doesn't move a half placed helicopter
-	heli_state = 0;
+	heli_state = HELI_OFF;
 	vic.spr_color[5] = LIGHT_GREY;
 	sprite_pointers[5] = SPR_HELICOPTER;
 	vic.spr_pos[5].x = 80;
@@ -62,9 +62,8 @@ void spawn_helicopter(void)
 	heli_flash = 0;
 	heli_hit = 0;
 	bomb_request = 0;
-	heli_state = 1;
+	heli_state = HELI_FLYING;
 }
-
 
 void spawn_car_bridge(char car)
 {
@@ -91,23 +90,19 @@ void spawn_car4_bridge(void)
 
 void helicopter_bomb(char x)
 {
-	// the IRQ drops the bomb (the original sets heli_state to 2 here)
-	if (heli_state == 1 && vic.spr_pos[5].x < x && rnd(2))
+	// the IRQ drops the bomb
+	if (heli_state == HELI_FLYING && vic.spr_pos[5].x < x && rnd(2))
 		bomb_request = 1;
 }
 
-// Lines 6000-6099
 static void skid(void)
 {
-	// no tune during the crash (the original plays none), so it doesn't turn
-	// the fading volume up again
+	// no tune during the crash, so it doesn't turn the fading volume up again
 	music_off();
 
-	// Lines 6000-6006 in the raster IRQ (crash_frame), smoothly: back and forth
-	// between the enemy car and the player's, 20 pixels left each time, until
-	// the left side of the road, then the player's car explodes, flashing
-	// yellow, with the noise fading out. The original jumps 10 pixels a line,
-	// and stops with ?ILLEGAL QUANTITY when x goes below 0; here it stops at 0
+	// In the raster IRQ (crash_frame): back and forth between the enemy car and
+	// the player's, 20 pixels left each time, until the left side of the road,
+	// then the player's car explodes, flashing yellow, with the noise fading out
 	crash_anim = CRASH_SLIDE;
 	while (crash_anim)
 		;
@@ -129,8 +124,7 @@ static void skid(void)
 	music_on();
 }
 
-// The player can't steer during the slide (the original reads the keys in
-// frame_update then too)
+// The player can't steer during the slide
 void crash_skid(void)
 {
 	player_hold = 1;
@@ -138,7 +132,6 @@ void crash_skid(void)
 	player_hold = 0;
 }
 
-// Line 5999
 static void crash(void)
 {
 	if (crashed == 1)
@@ -155,8 +148,6 @@ void crash_check(void)
 		crash();
 	}
 }
-
-// Lines 12-19: an enemy car hit by the guns or the smoke
 
 void car_explode(char car)
 {
@@ -180,16 +171,15 @@ static void shots(void)
 		}
 }
 
-// Lines 51-57: F7, F5, and the missile hitting the helicopter. F5 pauses in
-// the raster IRQ (keys_frame, lines 58-60), F7 is read there too
+// F7 (read in the raster IRQ, keys_frame), and the missile hitting the
+// helicopter
 static void keys_and_helicopter(void)
 {
 	if (quit_request)
 		lives = -1;
 
-	// The missile tests itself at each step (weapon_update); the original tests
-	// it here and the helicopter flashes too fast to see and flies on. Now
-	// the raster IRQ flashes it and it's gone until the next country road
+	// the missile tests itself at each step (missile_hit), and the raster IRQ
+	// flashes the helicopter; it's gone until the next country road
 	if (!heli_hit)
 		return;
 	heli_hit = 0;

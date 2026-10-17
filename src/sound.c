@@ -1,6 +1,6 @@
 #include "sound.h"
 #include "system.h"
-#include "helper.h"
+#include "frame.h"
 
 // The tune: 76 notes of (freq hi, freq lo, SR)
 static const char tune_notes[228] = {
@@ -13,9 +13,7 @@ static const char tune_notes[228] = {
 // The offset of the next note; passes through the tune, from 2
 static char tune_pos, tune_loops = 2;
 
-// The original plays a note per sys51000, so its tempo is the speed of the
-// BASIC around it: about 5.8 frames a note on the title, 6.6 on the high score
-// table, and slower and uneven in the game
+// Frames a note
 #define TUNE_FRAMES 12
 // Below the screen
 #define MUSIC_LINE  251
@@ -27,8 +25,7 @@ static char music_frames;
 static volatile char notes_left, sound_end;
 
 // The explosion starts with a hard restart in the raster IRQ: the gate off and
-// the envelope 0 for 2 frames, then the noise. The original turns the gate off
-// and on at once, which the SID may not take as a new note (the ADSR bug)
+// the envelope 0 for 2 frames, then the noise, so the SID takes it as a new note
 static volatile char explosion_frames;
 
 void sound_explosion(void)
@@ -67,7 +64,7 @@ static __interrupt void sound_frame(void)
 	// voice 1 follows voice 3's sawtooth, a step a frame
 	if (siren_on)
 	{
-		POKE(0xd401, PEEK(0xd41b));
+		((volatile char *)&sid.voices[0].freq)[1] = sid.random;
 		if (!--siren_frames)
 			siren_on = 0;
 	}
@@ -95,14 +92,12 @@ static __interrupt void music_frame(void)
 	sid.voices[1].ctrl = SID_CTRL_RECT | SID_CTRL_GATE;
 	sid.voices[1].pwm = 0x00ff;
 
-	// The original starts at the second note and plays two notes from past the
-	// end of the table; this plays the 76 notes of the table
 	char x = tune_pos;
 	sid.voices[1].freq = (tune_notes[x] << 8) | tune_notes[x + 1];
 	sid.voices[1].susrel = tune_notes[x + 2];
 	tune_pos = x + 3;
 
-	// the last of the notes: the volume off after it (poke54296,0)
+	// the last of the notes: the volume off after it
 	if (notes_left && !--notes_left)
 	{
 		music_playing = 0;
@@ -157,7 +152,7 @@ void music_init(void)
 
 void music_on(void)
 {
-	// the first note on the next frame, as the original plays it at once
+	// the first note on the next frame
 	sound_end = 0;
 	if (!music_playing)
 	{
@@ -213,7 +208,7 @@ void sound_crash_off(void)
 void sound_siren_start(void)
 {
 	for (char i = 0; i < 24; i++)
-		POKE(0xd400 + i, 0);
+		((volatile char *)&sid)[i] = 0;
 	sid.voices[2].freq = 50;
 	sid.voices[0].attdec = 255;
 	// volume 15, voice 3 off

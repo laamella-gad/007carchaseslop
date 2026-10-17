@@ -1,14 +1,18 @@
-// The original's machine code helper at $c000: one frame of the cars, the
-// helicopter and the weapon. BASIC calls it with SYS between its PRINTs
-#ifndef HELPER_H
-#define HELPER_H
+// What moves in the raster IRQ: the cars, the player, the helicopter, the
+// weapon and the crash, a frame at a time, and the state the road code shares
+// with it
+#ifndef FRAME_H
+#define FRAME_H
 
-// Shared with BASIC in the original ($cff0-$cffe)
-extern char turbo;              // 53232: 1 after F1, 0 after F3
-extern char headlights_on;      // 53233: in the tunnel the headlights follow the player
-extern volatile char car_direction[4]; // 53241-53244: 1-5, 0 off the road
-extern volatile char heli_state; // 53245: 1 flying, 2 drop the bomb, 3 bomb falling
-extern volatile char weapon_state; // 53246: 0 free, 1 guns, 2 missile, 3 smoke
+extern char turbo;              // 1 after F1, 0 after F3
+extern char headlights_on;      // in the tunnel the headlights follow the player
+extern volatile char car_direction[4]; // 1-5, 0 off the road
+extern volatile char heli_state;
+extern volatile char weapon_state;
+
+#define HELI_OFF        0
+#define HELI_FLYING     1
+#define HELI_BOMBING    3       // stopped while its bomb falls
 
 #define WEAPON_FREE     0
 #define WEAPON_GUNS     1
@@ -39,9 +43,9 @@ extern volatile char motion_hold;
 extern volatile char motion_on;
 // Set during the crash slide: the player can't steer
 extern volatile char player_hold;
-// On the bridge (lines 2100-2250): the player is a boat on the water and a car
-// on the bank and the road (in the IRQ). With bridge_edge set too, the IRQ
-// tests the bridge's edge (x 171-199) for a crash every frame
+// On the bridge the player is a boat on the water and a car on the bank and the
+// road (in the IRQ). With bridge_edge set too, the IRQ tests the bridge's edge
+// (x 171-199) for a crash every frame
 extern volatile char on_bridge, bridge_edge;
 
 // Set by the IRQ on F7; the collision pass ends the game
@@ -79,6 +83,6 @@ __interrupt void missile_frame(void);
 __interrupt void heli_flash_frame(void);
 __interrupt void anim_frame(void);
 
-#pragma compile("helper.c")
+#pragma compile("frame.c")
 
 #endif

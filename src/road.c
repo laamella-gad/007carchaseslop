@@ -1,24 +1,35 @@
 #include "road.h"
 #include "cars.h"
 #include "game.h"
-#include "helper.h"
+#include "frame.h"
 #include "plan.h"
 #include "sound.h"
 #include "system.h"
 
-// Where each section goes on to: the line it jumps to
-enum Next {
-	NEXT_COUNTRY,       // 188
-	NEXT_COUNTRY_ROAD,  // 200: the country loop, from a curve
-	NEXT_CITY,          // 380
-	NEXT_TUNNEL,        // 500
-	NEXT_LEFT_CURVE,    // 1000
-	NEXT_RIGHT_CURVE,   // 1100
-	NEXT_BRIDGE,        // 2100
-	NEXT_GAME_OVER      // 39
-};
+// One more pass of a section: 1 when it has lasted length passes
+static char section_done(unsigned length)
+{
+	if (++distance < length)
+		return 0;
+	distance = 0;
+	return 1;
+}
 
-#define section_is(n)   (plan[plan_pos] == (n))
+static void bonus_check(void)
+{
+	if (plan_pos + 1 == plan_length)
+		bonus();
+}
+
+// Rows 0-19 cleared, the panel below stays
+static void road_clear(char colour)
+{
+	for (unsigned i = 0; i < 20 * 40; i++)
+	{
+		screen[i] = ' ';
+		colour_ram[i] = colour;
+	}
+}
 
 static void colours(char back)
 {
@@ -26,7 +37,7 @@ static void colours(char back)
 	vic.color_back = back;
 }
 
-// Lines 242-245 and the like: new enemy cars for the ones off the road
+// New enemy cars for the ones off the road
 static void spawn_cars(void)
 {
 	if (car_direction[0] == 0)
@@ -39,77 +50,49 @@ static void spawn_cars(void)
 		spawn_car4();
 }
 
-// Lines 188-251
-static char country(char setup)
+// "BRIDGE OUT ON LEFT" before the bridge, a row a frame
+static void bridge_sign(void)
 {
-	if (setup)
-	{
-		colours(GREY);
-		spawn_helicopter();
-		headlights_on = 0;
-		play_rows(country_start);
-		plan_pos++;
-		player_sprite = SPR_PLAYER;
-		enemy_sprite = SPR_ENEMY;
-		sprite_pointers[0] = player_sprite;
-		for (char i = 1; i < 4; i++)
-			sprite_pointers[i] = enemy_sprite;
-		sprite_pointers[4] = player_sprite;
-	}
+	if (plan_next() != ROAD_BRIDGE)
+		return;
+	row_wait();
+	text_at(10, 2, WHITE, "BRIDGE OUT");
+	row_wait();
+	text_at(11, 2, WHITE, "ON LEFT   ");
+}
+
+// Each section returns 1 when the game is over, 0 at its end
+static char country(void)
+{
+	colours(GREY);
+	spawn_helicopter();
+	headlights_on = 0;
+	play_rows(country_start);
+	player_sprite = SPR_PLAYER;
+	enemy_sprite = SPR_ENEMY;
+	sprite_pointers[0] = player_sprite;
+	for (char i = 1; i < 4; i++)
+		sprite_pointers[i] = enemy_sprite;
+	sprite_pointers[4] = player_sprite;
 
 	for (;;)
 	{
 		play_rows(country_a);
-		// a sign before the bridge
 		music_on();
-		if (section_is(3))
-		{
-			row_wait();
-			text_at(10, 2, WHITE, "BRIDGE OUT");
-		}
-		if (section_is(3))
-		{
-			row_wait();
-			text_at(11, 2, WHITE, "ON LEFT   ");
-		}
+		bridge_sign();
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 
 		play_rows(country_b);
-		// line 235 also tests cr, not cr(p): never 1
-		distance++;
-		if (distance == ROAD_LENGTH && section_is(1))
-		{
-			distance = 0;
-			return NEXT_TUNNEL;
-		}
-		if (distance == ROAD_LENGTH && section_is(2))
-		{
-			distance = 0;
-			return NEXT_LEFT_CURVE;
-		}
-		if (distance == ROAD_LENGTH && section_is(3))
-		{
-			distance = 0;
-			return NEXT_BRIDGE;
-		}
-		if (section_is(3))
-		{
-			row_wait();
-			text_at(10, 2, WHITE, "BRIDGE OUT");
-		}
+		if (section_done(ROAD_LENGTH))
+			return 0;
+		bridge_sign();
 		music_on();
-		if (section_is(3))
-		{
-			row_wait();
-			text_at(11, 2, WHITE, "ON LEFT   ");
-		}
-		if (section_is(6))
-			bonus();
+		bonus_check();
 		spawn_cars();
 		helicopter_bomb(140);
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 	}
 }
 
@@ -125,18 +108,17 @@ static void chars_at(const unsigned *at, char n, char colour, char c)
 		char_at(at[i], colour, c);
 }
 
-// Lines 380-499
 static char city(void)
 {
 	colours(GREY);
 	headlights_on = 0;
 	vic.spr_pos[5].x = 0;
+	road_clear(WHITE);
 	play_rows(city_top);
-	plan_pos++;
-	// the two kinds of street lights take turns
-	signed char lights = 1;
 	play_rows(city_sides);
-	// the three blocks of houses change colour each time
+	// the two kinds of street lights take turns, and the three blocks of
+	// houses change colour each time
+	char lights = 0;
 	char c1 = LIGHT_GREY, c2 = BROWN, c3 = RED;
 
 	for (;;)
@@ -146,52 +128,32 @@ static char city(void)
 		chars_at(roofs_middle, 6, c1, 0xa6);
 		play_rows_ink(city_a, c1);
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 
 		music_on();
 		play_rows_ink(city_b, c2);
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 
 		row_wait();
 		chars_at(roofs_sides, 6, c3, 0xa6);
 		play_rows_ink(city_c, c3);
-		if (lights == 1)
-		{
-			row_wait();
-			chars_at(lights_a, 5, WHITE, 0xdd);
-		}
-		if (lights == -1)
-		{
-			row_wait();
-			chars_at(lights_b, 5, WHITE, 0xdd);
-		}
+		row_wait();
+		chars_at(lights_a, 5, WHITE, ' ');
+		row_wait();
+		chars_at(lights_b, 5, WHITE, ' ');
+		row_wait();
+		chars_at(lights ? lights_b : lights_a, 5, WHITE, 0xdd);
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 
-		if (section_is(6))
-			bonus();
-		if (distance == ROAD_LENGTH && section_is(3))
-		{
-			distance = 0;
-			return NEXT_COUNTRY;
-		}
-		lights = -lights;
-		distance++;
-		if (distance == ROAD_LENGTH && section_is(1))
-		{
-			distance = 0;
-			return NEXT_COUNTRY;
-		}
-		if (distance == ROAD_LENGTH && section_is(2))
-		{
-			distance = 0;
-			return NEXT_TUNNEL;
-		}
+		bonus_check();
+		lights = !lights;
+		if (section_done(ROAD_LENGTH))
+			return 0;
 		spawn_cars();
 		helicopter_bomb(140);
 
-		// lines 497-499: the colours turn
 		char c = c1;
 		c1 = c3;
 		c3 = c2;
@@ -199,7 +161,6 @@ static char city(void)
 	}
 }
 
-// Lines 500-850
 static char tunnel(void)
 {
 	// into the tunnel
@@ -209,14 +170,14 @@ static char tunnel(void)
 
 	// the helicopter's sprite is the headlights now (it stops first, so the IRQ
 	// leaves sprites 5 and 6 alone)
-	heli_state = 0;
+	heli_state = HELI_OFF;
 	headlights_on = 1;
 	vic.spr_pos[5].y = 140;
 	sprite_pointers[5] = SPR_HEADLIGHTS;
 	vic.spr_pos[6].x = 0;
 	vic.spr_color[5] = YELLOW;
 	colours(BLACK);
-	plan_pos++;
+	road_clear(LIGHT_GREY);
 	play_rows(tunnel_start);
 	play_rows(tunnel_a);
 
@@ -225,34 +186,24 @@ static char tunnel(void)
 		music_on();
 		sprite_pointers[5] = SPR_HEADLIGHTS;
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 		play_rows(tunnel_b);
 
-		distance++;
-		if (distance == ROAD_LENGTH && section_is(1))
-		{
-			distance = 0;
-			return NEXT_CITY;
-		}
-		if (distance == ROAD_LENGTH && (section_is(2) || section_is(3)))
-		{
-			distance = 0;
-			return NEXT_COUNTRY;
-		}
-		if (section_is(6))
-			bonus();
+		if (section_done(ROAD_LENGTH))
+			return 0;
+		bonus_check();
 		music_on();
 		sprite_pointers[5] = SPR_HEADLIGHTS;
 		spawn_cars();
 		vic.spr_pos[5].x = vic.spr_pos[0].x;
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 		play_rows(tunnel_a);
 	}
 }
 
-// Lines 140-154: the three rows of the curve, scrolled in the right curve
-static char curve[3][41];
+// The three rows of the curve, scrolled in the right curve
+static char curve_rows[3][41];
 
 static void curve_init(void)
 {
@@ -262,15 +213,15 @@ static void curve_init(void)
 		"   \xce         \xce             \xcd       \xcd    "};
 	for (char i = 0; i < 3; i++)
 		for (char j = 0; j < 41; j++)
-			curve[i][j] = rows[i][j];
+			curve_rows[i][j] = rows[i][j];
 }
 
-// gosub150: the rows 2 characters right
+// The rows 2 characters right
 static void curve_scroll(void)
 {
 	for (char i = 0; i < 3; i++)
 	{
-		char *s = curve[i];
+		char *s = curve_rows[i];
 		char a = s[38], b = s[39];
 		for (char j = 39; j >= 2; j--)
 			s[j] = s[j - 2];
@@ -280,105 +231,40 @@ static void curve_scroll(void)
 	for (char i = 0; i < 3; i++)
 	{
 		row_wait();
-		text_at(2 + i, 0, BLUE, curve[i]);
+		text_at(2 + i, 0, BLUE, curve_rows[i]);
 	}
 }
 
-// The player is carried out of the curve (lines 1026, 1049, 1126 and 1156) in
-// the raster IRQ: curve_drift
-
-// Lines 1000-1060
-static char left_curve(void)
+// The player is carried out of the curve in the raster IRQ: curve_drift
+static char curve(char left)
 {
 	colours(GREY);
 	curve_init();
-	curve_drift = DRIFT_LEFT;
-	play_rows(left_curve_start);
-	plan_pos++;
+	curve_drift = left ? DRIFT_LEFT : DRIFT_RIGHT;
+	play_rows(left ? left_curve_start : right_curve_start);
 
 	for (;;)
 	{
-		play_rows(left_curve_a);
+		play_rows(left ? left_curve_a : right_curve_a);
 		music_on();
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 
-		play_rows(left_curve_b);
-		distance++;
-		if (distance == CURVE_LENGTH && section_is(1))
-		{
-			distance = 0;
-			return NEXT_COUNTRY_ROAD;
-		}
-		if (distance == CURVE_LENGTH && section_is(2))
-		{
-			distance = 0;
-			return NEXT_RIGHT_CURVE;
-		}
-		if (distance == CURVE_LENGTH && section_is(3))
-		{
-			distance = 0;
-			return NEXT_COUNTRY;
-		}
-		if (section_is(6))
-			bonus();
-		if (section_is(6))
-			bonus();
+		play_rows(left ? left_curve_b : right_curve_b);
+		if (section_done(CURVE_LENGTH))
+			return 0;
+		bonus_check();
+		if (!left)
+			curve_scroll();
 		spawn_cars();
 		music_on();
 		helicopter_bomb(140);
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 	}
 }
 
-// Lines 1100-1160
-static char right_curve(void)
-{
-	colours(GREY);
-	curve_init();
-	curve_drift = DRIFT_RIGHT;
-	play_rows(right_curve_start);
-	plan_pos++;
-
-	for (;;)
-	{
-		play_rows(right_curve_a);
-		music_on();
-		if (collide())
-			return NEXT_GAME_OVER;
-
-		play_rows(right_curve_b);
-		distance++;
-		if (distance == CURVE_LENGTH && section_is(1))
-		{
-			distance = 0;
-			return NEXT_COUNTRY_ROAD;
-		}
-		if (distance == CURVE_LENGTH && section_is(2))
-		{
-			distance = 0;
-			return NEXT_LEFT_CURVE;
-		}
-		if (distance == CURVE_LENGTH && section_is(3))
-		{
-			distance = 0;
-			return NEXT_COUNTRY;
-		}
-		if (section_is(6))
-			bonus();
-		curve_scroll();
-		if (section_is(6))
-			bonus();
-		spawn_cars();
-		music_on();
-		helicopter_bomb(140);
-		if (collide())
-			return NEXT_GAME_OVER;
-	}
-}
-
-// Into the bridge's edge between x 170 and 200: lines 2216 and 2240. The
+// Into the bridge's edge between x 170 and 200. The
 // raster IRQ tests it every frame (crash_test) from the first of these to the
 // bridge's end
 static void water(void)
@@ -392,7 +278,6 @@ static void bridge_end(void)
 	bridge_edge = 0;
 }
 
-// Lines 2100-2250
 static char bridge(void)
 {
 	play_rows(bridge_start);
@@ -414,17 +299,15 @@ static char bridge(void)
 		if (lives == -1)
 		{
 			bridge_end();
-			return NEXT_GAME_OVER;
+			return 1;
 		}
 		water();
 
 		play_rows(bridge_b);
-		distance++;
-		if (distance == BRIDGE_LENGTH)
+		if (section_done(BRIDGE_LENGTH))
 		{
-			distance = 0;
 			bridge_end();
-			return NEXT_COUNTRY;
+			return 0;
 		}
 		music_on();
 		water();
@@ -437,11 +320,11 @@ static char bridge(void)
 			spawn_car4_bridge();
 		helicopter_bomb(180);
 		if (collide())
-			return NEXT_GAME_OVER;
+			return 1;
 	}
 }
 
-// Lines 91-98 and 180: the panel, the cars and the helicopter
+// The panel, the cars and the helicopter
 static void start(void)
 {
 	show_labels();
@@ -472,24 +355,24 @@ static void start(void)
 	motion_on = 1;
 }
 
+static char section(char road)
+{
+	// only the curves carry the player
+	curve_drift = DRIFT_NONE;
+	switch (road)
+	{
+	case ROAD_COUNTRY: return country();
+	case ROAD_CITY: return city();
+	case ROAD_TUNNEL: return tunnel();
+	case ROAD_LEFT_CURVE: return curve(1);
+	case ROAD_RIGHT_CURVE: return curve(0);
+	default: return bridge();
+	}
+}
+
 void game(void)
 {
 	start();
-	char next = NEXT_COUNTRY;
-	for (;;)
-	{
-		// only the curves carry the player
-		curve_drift = DRIFT_NONE;
-		switch (next)
-		{
-		case NEXT_COUNTRY: next = country(1); break;
-		case NEXT_COUNTRY_ROAD: next = country(0); break;
-		case NEXT_CITY: next = city(); break;
-		case NEXT_TUNNEL: next = tunnel(); break;
-		case NEXT_LEFT_CURVE: next = left_curve(); break;
-		case NEXT_RIGHT_CURVE: next = right_curve(); break;
-		case NEXT_BRIDGE: next = bridge(); break;
-		default: return;
-		}
-	}
+	while (!section(plan[plan_pos]))
+		plan_pos++;
 }

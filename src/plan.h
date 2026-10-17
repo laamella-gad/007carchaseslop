@@ -1,19 +1,28 @@
-// The plan of the road at the bottom right (lines 7000-7500), and the bonus at
-// the end of it (7100, 13000)
+// The plan of the road at the bottom right, and the bonus at the end of it
 #ifndef PLAN_H
 #define PLAN_H
 
-// d$: the kind of road the plan drawing is at. It goes on from the last plan
 enum Road {ROAD_COUNTRY, ROAD_CITY, ROAD_TUNNEL, ROAD_LEFT_CURVE, ROAD_RIGHT_CURVE, ROAD_BRIDGE};
-extern char plan_road;
 
-// gosub7000: six random sections, then the bonus, drawn on the screen
-void plan_new(void);
+// The track: plan[0] is the section the road is in, the road goes through the
+// others in turn, and the bonus comes in the last one, which is the first of the
+// next plan. The plan drawn at the bottom right is all but the last
+#define PLAN_SIZE 12
+extern char plan[PLAN_SIZE];
+extern char plan_length;
+extern char plan_pos;
 
-// gosub7100: the bonus car animation and points, then a new plan
+// A new plan from the given section, drawn on the screen
+void plan_new(char from);
+
+// The section after the one the road is in, ROAD_NONE in the last
+#define ROAD_NONE 0xff
+char plan_next(void);
+
+// The bonus car animation and points, then a new plan
 void bonus(void);
 
-// gosub7500: the plan's colour area black
+// The plan's colour area black
 void plan_clear_colours(void);
 
 #pragma compile("plan.c")

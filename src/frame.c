@@ -1,4 +1,4 @@
-#include "helper.h"
+#include "frame.h"
 #include "game.h"
 #include "sound.h"
 #include "system.h"
@@ -15,9 +15,7 @@ volatile char quit_request, crash_anim, title_on, glide_on;
 volatile char on_bridge, bridge_edge;
 volatile char car_boom[4];
 
-// Joystick in port 2: the bits of $dc00 that go low. The original compares
-// $dc00 with one value each, so only one direction or fire at a time counts:
-// no diagonals, no fire while steering
+// Joystick in port 2: the bits of $dc00 that go low
 #define JOY_UP      0x01
 #define JOY_DOWN    0x02
 #define JOY_LEFT    0x04
@@ -34,35 +32,27 @@ char joystick_fire(void)
 	return joystick() & JOY_FIRE;
 }
 
-#define GUNS_Y      120     // line 40 pokes it into fire_guns and fire_missile
+#define GUNS_Y      120
 #define SMOKE_Y     180
 
 // The helicopter's explosion: frames of the flash, explosion and helicopter
 // shapes switching every 4
 #define HELI_FLASH_FRAMES   40
 
-// The missile's speed in half pixels a frame, doubled with turbo. The original
-// moves it 5 pixels a frame_update, on average every 3.6 frames (1 to 10) at
-// the game's speed: about 1.4 pixels a frame
+// The missile's speed in half pixels a frame, doubled with turbo
 #define MISSILE_SPEED       3
 
-// The cars' speed in 1/256 pixels a frame for each 5 pixels the original moves
-// them a frame_update, which comes every 19.8 frames on average at the game's
-// speed (4 to 48): 5 pixels every 20 frames, here twice that. Doubled with turbo
+// The cars' speed in 1/256 pixels a frame, for a step of 5 down: 5 pixels
+// every 10 frames. Doubled with turbo
 #define CAR_SPEED           128
 
-// The player's speed in pixels a frame, doubled with turbo. The original moves
-// it 10 pixels a call: with the keys a frame_update (0.5 pixels a frame), with
-// the joystick a weapon_update, every 9.1 frames on average (1.1 a frame).
-// Here 2
+// The player's speed in pixels a frame, doubled with turbo
 #define PLAYER_SPEED        2
 
-// The curves carry the player out, in 1/256 pixels a frame. The original moves
-// it 20 pixels twice a pass of the curve loop, about every 45 frames
+// The curves carry the player out, in 1/256 pixels a frame
 #define DRIFT_SPEED         256
 
-// Frames each gun frame shows, halved with turbo. The original shows one a
-// weapon_update: every 9.1 frames on average, mostly 2-4
+// Frames each gun frame shows, halved with turbo
 #define GUN_FRAMES          4
 
 // The bridge's water, by the player's x: the left bank below WATER_LEFT, the
@@ -71,8 +61,7 @@ char joystick_fire(void)
 #define EDGE_LEFT   171
 #define EDGE_RIGHT  199
 
-// The player stops at the kerbs. The original stops only at exactly these x,
-// so from an x past a kerb (after the crash slide) the car walks off the road
+// The player stops at the kerbs
 #define KERB_LEFT   0x50
 #define KERB_RIGHT  0xfa
 
@@ -81,7 +70,6 @@ char joystick_fire(void)
 
 static void player_right(char step)
 {
-	// the original jumps to crash_reset here, which does nothing unless x is $b4
 	char x = vic.spr_pos[0].x;
 	if (x < KERB_RIGHT)
 		vic.spr_pos[0].x = x < KERB_RIGHT - step ? x + step : KERB_RIGHT;
@@ -131,8 +119,8 @@ static void fire_smoke(void)
 	}
 }
 
-// x speeds of the enemy cars 1-3 by direction, for the original's x steps
-// -5 -3 -2 2 3 5 against a y step of 5; car 1 has its own order
+// x speeds of the enemy cars 1-3 by direction, for x steps of -5 -3 -2 2 3 5
+// against a y step of 5; car 1 has its own order
 #define DX(n)   ((n) * CAR_SPEED / 5)
 static const int car1_vx[6] = {0, DX(-2), 0, DX(2), DX(5), DX(-5)};
 static const int car_vx[6] = {0, DX(-5), DX(-3), 0, DX(3), DX(5)};
@@ -187,9 +175,7 @@ static void player_frame(void)
 		player_left(step);
 }
 
-// Carried out of the curve: left down to x 80, right up to x 240. The original
-// jumps 20 pixels: left not below 80, right while below 240, so up to 259, where
-// BASIC stops with ?ILLEGAL QUANTITY (in a byte it wraps to the left edge)
+// Carried out of the curve: left down to x 80, right up to x 240
 static void drift_frame(void)
 {
 	static char drift_f;
@@ -203,13 +189,12 @@ static void drift_frame(void)
 }
 
 // The helicopter flies right; on a request it stops and drops the bomb, which
-// falls down and right to y 195, then it flies on. The original moves both 5
-// pixels a frame_update; here at the cars' speed
+// falls down and right to y 195, then it flies on. Both at the cars' speed
 static void heli_frame(unsigned step_speed)
 {
 	static char heli_fx, bomb_f;
 	unsigned s;
-	if (heli_state == 1)
+	if (heli_state == HELI_FLYING)
 	{
 		if (bomb_request)
 		{
@@ -217,7 +202,7 @@ static void heli_frame(unsigned step_speed)
 			vic.spr_pos[6].x = vic.spr_pos[5].x;
 			vic.spr_pos[6].y = vic.spr_pos[5].y;
 			bomb_f = 128;
-			heli_state = 3;
+			heli_state = HELI_BOMBING;
 		}
 		else
 		{
@@ -227,28 +212,25 @@ static void heli_frame(unsigned step_speed)
 		}
 	}
 	bomb_request = 0;
-	if (heli_state == 3)
+	if (heli_state == HELI_BOMBING)
 	{
 		s = bomb_f + step_speed;
 		bomb_f = s & 255;
 		char d = s >> 8;
 		vic.spr_pos[6].x += d;
 		char y = vic.spr_pos[6].y + d;
-		// landed: off the screen (the original leaves it at y 200 until the
-		// collision pass moves it to 0)
+		// landed: off the screen
 		if (y > 195)
 		{
 			y = 0;
-			heli_state = 1;
+			heli_state = HELI_FLYING;
 		}
 		vic.spr_pos[6].y = y;
 	}
 }
 
-// The guns or the smoke against the enemy cars, from line 6-35 of the
-// original's collision pass: a car within 18 pixels of the player in x, at y
-// 110-140 for the guns or 175-200 for the smoke. The original tests once a
-// pass, every 45 frames or so, and may hit an exploding car again
+// The guns or the smoke against the enemy cars: a car within 18 pixels of the
+// player in x, at y 110-140 for the guns or 175-200 for the smoke
 static void weapon_hits(void)
 {
 	char state = weapon_state;
@@ -295,9 +277,7 @@ static void weapon_frame(void)
 	}
 	if (weapon_state == WEAPON_SMOKE)
 	{
-		// the smoke stays while the joystick is held down, or the ',' key (the
-		// original tests only the joystick, so smoke from the key ends on the
-		// next frame)
+		// the smoke stays while the joystick is held down, or the ',' key
 		vic.spr_pos[7].x = vic.spr_pos[0].x;
 		if (!(j & JOY_DOWN) && k != KEY_COMMA)
 		{
@@ -334,14 +314,8 @@ static const Box *shape_box(char shape)
 	}
 }
 
-// An enemy car or the bomb against the player, from lines 20-38 of the
-// original's collision pass: a car that isn't exploding or the bomb, whose
-// coloured pixels touch the player's. The original takes a car within 18
-// pixels in x at y 140-180, a box larger than the cars (up to 4 pixels apart
-// across, 13 along), and the bomb's sprite x within 10 of the player's at y
-// 140-180, which is off to the left: it hits a bomb 6 pixels left of the car
-// and misses one over the car's right half. It tests once a pass, so a car
-// could also drive through the player between two
+// An enemy car that isn't exploding, or the bomb, whose coloured pixels touch
+// the player's
 static char touches(char sprite, int x, int y, const Box *p)
 {
 	const Box *e = shape_box(sprite_pointers[sprite]);
@@ -371,15 +345,13 @@ static void crash_test(void)
 	// the bomb at x 0 is off the screen
 	if (vic.spr_pos[6].x && touches(6, x, y0, p))
 		crash_pending = 1;
-	// lines 2216 and 2240: into the bridge's edge. The original tests twice a
-	// pass of the bridge loop, so the player could get across between two
+	// into the bridge's edge
 	if (bridge_edge && x > EDGE_LEFT - 1 && x < EDGE_RIGHT + 1)
 		crash_pending = 1;
 }
 
 // The player's shape on the bridge: the boat on the water, the car on the left
-// bank (where the crash slide ends) and on the road right of the edge. The
-// original sets the boat once, at line 2121, when x is below 180
+// bank (where the crash slide ends) and on the road right of the edge
 static void bridge_shape(void)
 {
 	char x = vic.spr_pos[0].x;
@@ -398,9 +370,7 @@ static void print_credit(void)
 			screen[23 * 40 + 5 + i] = credit[i];
 }
 
-// An exploding enemy car goes off the road when its time is up. The original
-// takes it off at the next collision pass but one after the hit, so it shows
-// for 1 to 90 frames
+// An exploding enemy car goes off the road when its time is up
 static void booms_frame(void)
 {
 	for (char car = 1; car <= 4; car++)
@@ -413,12 +383,10 @@ static void booms_frame(void)
 
 // The crash slide: the player's car 20 pixels left at a time, the enemy car's
 // shape for the first 10 with the explosion's noise, until x 60. 2 pixels a
-// frame, in 1/256 pixels; the original: 20 pixels a pass of lines 6000-6001,
-// about 1.2 a frame
+// frame, in 1/256 pixels
 #define SLIDE_SPEED     512
 // Then the car explodes: 16 steps of the noise, from volume 15 down to 0. The
-// car is yellow during the noise and grey for the 2 frames between. A step of
-// lines 6002-6006 takes about 24 frames, here half that
+// car is yellow during the noise and grey for the 2 frames between
 #define BOOM_STEP_FRAMES    12
 #define BOOM_GAP_FRAMES     2
 
@@ -478,8 +446,7 @@ static void crash_frame(void)
 	}
 }
 
-// The original moves the cars and the player in frame_update (and the joystick
-// in weapon_update), so at the speed of the BASIC that calls them
+// The cars, the player, the helicopter, the weapon and the crash, a frame on
 __interrupt void cars_frame(void)
 {
 	if (!motion_on || motion_hold)
@@ -515,8 +482,7 @@ __interrupt void cars_frame(void)
 
 // F1 and F3 turbo on and off, F5 pauses and goes on (on a key press, so the
 // F5 that pauses doesn't end the pause), F7 ends the game at the next
-// collision pass. The original reads F1 and F3 in frame_update and F5 and F7
-// in the collision pass, so a short press could be missed
+// collision pass
 __interrupt void keys_frame(void)
 {
 	static char key_before;
@@ -551,16 +517,13 @@ __interrupt void keys_frame(void)
 	}
 }
 
-
-// The missile against the helicopter at each step. The original tests only
-// once a collision pass, when the missile has moved 35-50 pixels since the last
-// one, so it almost never finds it in the 15 pixel high window
+// The missile against the helicopter at each step
 static void missile_hit(char y)
 {
 	if (!(y > 50 && y < 70))
 		return;
 	// not the headlights in the tunnel, nor a helicopter that's exploding
-	if (heli_state < 1 || heli_state > 3 || heli_flash || sprite_pointers[5] != SPR_HELICOPTER)
+	if (heli_state == HELI_OFF || heli_flash || sprite_pointers[5] != SPR_HELICOPTER)
 		return;
 	int x = vic.spr_pos[7].x, heli = vic.spr_pos[5].x;
 	if (!(x > heli - 15 && x < heli + 15))
@@ -570,7 +533,7 @@ static void missile_hit(char y)
 	vic.spr_pos[7].x = 0;
 	vic.spr_pos[7].y = 0;
 	weapon_state = WEAPON_FREE;
-	heli_state = 0;
+	heli_state = HELI_OFF;
 	vic.spr_pos[6].x = 0;
 	vic.spr_pos[6].y = 0;
 	heli_hit = 1;
@@ -619,9 +582,7 @@ __interrupt void heli_flash_frame(void)
 	}
 }
 
-// The title's logo: 3 pixels left a pass of the title loop (sys51900 in line
-// 11070), a pass every 5.8 frames as measured; here twice that, 6 pixels in
-// 5.8 frames, in 1/256 pixels a frame
+// The title's logo scrolls left, in 1/256 pixels a frame
 #define TITLE_SPEED     264
 
 // volatile: only the raster IRQ reads them, and with glide() inlined oscar64

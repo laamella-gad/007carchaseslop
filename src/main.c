@@ -1,6 +1,6 @@
 // 007 Car Chase, (c) Coplin Software, rewritten in C for oscar64
 #include "system.h"
-#include "helper.h"
+#include "frame.h"
 #include "sound.h"
 #include "game.h"
 #include "plan.h"
@@ -8,9 +8,8 @@
 #include "title.h"
 #include "hiscore.h"
 
-// VIC bank 0 as in the original: the screen at $0400, the sprites at blocks
-// 40-59 ($0a00-$0eff), the ROM character set. Code and data go after them, up to
-// the BASIC ROM
+// VIC bank 0: the screen at $0400, the sprites at blocks 40-59 ($0a00-$0eff),
+// the ROM character set. Code and data go after them, up to $a000
 #pragma region(main, 0x0f00, 0xa000, , , {code, data, bss, heap, stack})
 #pragma stacksize(1024)
 #pragma heapsize(0)
@@ -30,11 +29,11 @@ int main(void)
 {
 	music_init();
 
-	// lines 2-4
 	vic.color_border = BLACK;
 	vic.color_back = BLACK;
 	vic.spr_enable = 0;
 	turbo = 0;
+	text_init();
 	screen_clear(WHITE);
 	vic.spr_multi = 0xff;
 	vic.spr_mcolor0 = BLACK;
@@ -42,7 +41,7 @@ int main(void)
 
 	for (;;)
 	{
-		// lines 39-44, also after each game
+		// each game
 		weapon_state = WEAPON_FREE;
 		lives = 3;
 		player_sprite = SPR_PLAYER;
@@ -54,7 +53,6 @@ int main(void)
 		// the credit row
 		for (char i = 0; i < 21; i++)
 			colour_ram[23 * 40 + 5 + i] = YELLOW;
-		plan_road = ROAD_COUNTRY;
 		hiscore();
 
 		title();

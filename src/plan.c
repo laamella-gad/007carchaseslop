@@ -1,18 +1,10 @@
 #include "plan.h"
 #include "game.h"
-#include "helper.h"
+#include "frame.h"
 #include "sound.h"
 #include "system.h"
 
-char plan_road;
-
-// Lines 7400-7401: spaces over the plan area, columns 30-39 of rows 20-24
-static void plan_clear(void)
-{
-	for (char y = 20; y < 25; y++)
-		for (char x = 30; x < 40; x++)
-			screen[x + 40 * y] = ' ';
-}
+char plan[PLAN_SIZE], plan_length, plan_pos;
 
 void plan_clear_colours(void)
 {
@@ -22,93 +14,97 @@ void plan_clear_colours(void)
 			colour_ram[x + 40 * y] = BLACK;
 }
 
-// The pieces of the plan by direction (dr: 1 up, 2 right, 3 down, 4 left).
-// A straight piece keeps the direction, the curves turn it
+// The pieces of the plan by direction: up, right, down, left. A straight piece
+// keeps the direction, the curves turn it
+enum {UP, RIGHT, DOWN, LEFT};
+
 typedef struct {
 	char c, direction;
 	signed char dx, dy;
 } Piece;
 
 static const Piece straight[4] = {
-	{93, 1, 0, -1},
-	{67, 2, 1, 0},
-	{93, 3, 0, 1},
-	{67, 4, -1, 0},
+	{93, UP, 0, -1},
+	{67, RIGHT, 1, 0},
+	{93, DOWN, 0, 1},
+	{67, LEFT, -1, 0},
 };
 
 // after a left curve on the road
 static const Piece turn_left[4] = {
-	{85, 2, 1, 0},
-	{73, 3, 0, 1},
-	{75, 4, -1, 0},
-	{74, 1, 0, -1},
+	{85, RIGHT, 1, 0},
+	{73, DOWN, 0, 1},
+	{75, LEFT, -1, 0},
+	{74, UP, 0, -1},
 };
 
 // after a right curve
 static const Piece turn_right[4] = {
-	{75, 4, -1, 0},
-	{75, 1, 0, -1},
-	{74, 2, 1, 0},
-	{85, 3, 0, 1},
+	{75, LEFT, -1, 0},
+	{75, UP, 0, -1},
+	{74, RIGHT, 1, 0},
+	{85, DOWN, 0, 1},
 };
 
-void plan_new(void)
-{
-	for (char n = 1; n <= 6; n++)
-	{
-		plan[n] = rnd(3) + 1;
-	}
-	plan[7] = 6;
-	plan_pos = 1;
+// The sections a section can go on to, picked at random. A bridge always goes
+// on to the country
+static const char roads_after[5][3] = {
+	{ROAD_TUNNEL, ROAD_LEFT_CURVE, ROAD_BRIDGE},        // country
+	{ROAD_COUNTRY, ROAD_TUNNEL, ROAD_COUNTRY},          // city
+	{ROAD_CITY, ROAD_COUNTRY, ROAD_COUNTRY},            // tunnel
+	{ROAD_COUNTRY, ROAD_RIGHT_CURVE, ROAD_COUNTRY},     // left curve
+	{ROAD_COUNTRY, ROAD_LEFT_CURVE, ROAD_COUNTRY},      // right curve
+};
 
-	// the drawing starts at the bottom, going up, with the second section: the
-	// plan is one section ahead of the road
+// Five random steps from the section the road is in
+#define PLAN_STEPS 5
+
+void plan_new(char from)
+{
+	char n = 0;
+	plan[0] = from;
+	for (char i = 0; i < PLAN_STEPS; i++)
+	{
+		if (plan[n] == ROAD_BRIDGE)
+		{
+			plan[n + 1] = ROAD_COUNTRY;
+			n++;
+		}
+		plan[n + 1] = roads_after[plan[n]][rnd(3)];
+		n++;
+	}
+	if (plan[n] == ROAD_BRIDGE)
+	{
+		plan[n + 1] = ROAD_COUNTRY;
+		n++;
+	}
+	plan_length = n + 1;
+	plan_pos = 0;
+
+	// the area, columns 30-39 of rows 20-24, cleared to black
+	for (char y = 20; y < 25; y++)
+		for (char x = 30; x < 40; x++)
+		{
+			screen[x + 40 * y] = ' ';
+			colour_ram[x + 40 * y] = BLACK;
+		}
+
+	// drawn from the bottom, going up, a piece for each section but the last.
 	// int, not signed char: oscar64 1.32.271 (-O2) shortens the sign extension
 	// of a signed char to int after placing its branch, which then jumps into
 	// the middle of an instruction
 	int x = 30, y = 24;
-	char n = 1, direction = 1;
-	plan_clear();
-	for (char z1 = 30; z1 < 40; z1++)
-		for (char z2 = 20; z2 < 25; z2++)
-			colour_ram[z1 + 40 * z2] = BLACK;
+	char direction = UP;
 
-	for (;;)
+	for (char i = 0; i + 1 < plan_length; i++)
 	{
-		n++;
-		if (plan[n] == 6)
-			return;
-
-		char next = plan[n];
 		const Piece *pieces = straight;
-		switch (plan_road)
-		{
-		case ROAD_COUNTRY:
-			plan_road = next == 1 ? ROAD_TUNNEL : next == 2 ? ROAD_LEFT_CURVE : ROAD_BRIDGE;
-			break;
-		case ROAD_BRIDGE:
-			// the bridge is drawn as a piece of its own: the next section is
-			// the same plan entry again
-			n--;
-			plan_road = ROAD_COUNTRY;
-			break;
-		case ROAD_LEFT_CURVE:
-			plan_road = next == 2 ? ROAD_RIGHT_CURVE : ROAD_COUNTRY;
+		if (plan[i] == ROAD_LEFT_CURVE)
 			pieces = turn_left;
-			break;
-		case ROAD_RIGHT_CURVE:
-			plan_road = next == 2 ? ROAD_LEFT_CURVE : ROAD_COUNTRY;
+		else if (plan[i] == ROAD_RIGHT_CURVE)
 			pieces = turn_right;
-			break;
-		case ROAD_CITY:
-			plan_road = next == 2 ? ROAD_TUNNEL : ROAD_COUNTRY;
-			break;
-		case ROAD_TUNNEL:
-			plan_road = next == 1 ? ROAD_CITY : ROAD_COUNTRY;
-			break;
-		}
 
-		const Piece *p = pieces + direction - 1;
+		const Piece *p = pieces + direction;
 		int o = x + 40 * y;
 		if (o >= 0 && o < 1000)
 			screen[o] = p->c;
@@ -116,6 +112,11 @@ void plan_new(void)
 		x += p->dx;
 		y += p->dy;
 	}
+}
+
+char plan_next(void)
+{
+	return plan_pos + 1 < plan_length ? plan[plan_pos + 1] : ROAD_NONE;
 }
 
 // The speed of all the bonus animation's moves, in 1/256 pixels a frame: 2
@@ -142,11 +143,8 @@ static void wait_frames(char n)
 	}
 }
 
-// Lines 13000-13099: the bonus car drives round the player's car with a siren.
-// The moves and the siren are in the raster IRQ, a step a frame; the original
-// steps them from BASIC, unevenly, at 1-7 pixels a frame (the pixels and frames of
-// its measured loops are in the comments). The pause and the siren take half
-// the original's time
+// The bonus car drives round the player's car with a siren. The moves and the
+// siren are in the raster IRQ, a step a frame
 static void bonus_animation(void)
 {
 	// all but the player off the screen
@@ -160,18 +158,15 @@ static void bonus_animation(void)
 	sound_off();
 	tune_restart();
 
-	// the player to the left, a pixel for each x from 80 up to the player's
-	// (to 79, or 1 left from below 80), the bonus car on in the middle. Line
-	// 13010 wasn't measured per step: about 2750 cycles each, 7 pixels a frame
+	// the player to the left (to 79, or 1 left from below 80), the bonus car on
+	// in the middle
 	sprite_pointers[1] = SPR_BONUS_CAR;
 	vic.spr_color[1] = WHITE;
-	// (stops at 0, where the original stops with ?ILLEGAL QUANTITY)
 	char to = x >= 80 ? 79 : x ? x - 1 : 0;
 	glide_wait(&vic.spr_pos[0].x, to);
 	vic.spr_pos[1].x = 180;
 
 	sound_siren_start();
-	// line 13014: 324 frames
 	sound_siren(162);
 	while (siren_on)
 		;
@@ -179,13 +174,13 @@ static void bonus_animation(void)
 
 	// down, right, up and back round the player
 	vic.spr_pos[1].y = 200;
-	glide_wait(&vic.spr_pos[1].y, 130);	// 13015: 71 pixels, 98 frames
-	glide_wait(&vic.spr_pos[0].x, 180);	// 13016: 101, 108
-	glide_wait(&vic.spr_pos[0].y, 140);	// 13017: 21, 25
-	wait_frames(29);			// 13018: 58 frames
-	glide_wait(&vic.spr_pos[0].y, 160);	// 13021: 21, 7
-	glide_wait(&vic.spr_pos[0].x, 80);	// 13022: 101, 108
-	glide_wait(&vic.spr_pos[1].y, 200);	// 13029: 71, 100
+	glide_wait(&vic.spr_pos[1].y, 130);
+	glide_wait(&vic.spr_pos[0].x, 180);
+	glide_wait(&vic.spr_pos[0].y, 140);
+	wait_frames(29);
+	glide_wait(&vic.spr_pos[0].y, 160);
+	glide_wait(&vic.spr_pos[0].x, 80);
+	glide_wait(&vic.spr_pos[1].y, 200);
 	vic.spr_pos[1].x = 0;
 }
 
@@ -198,15 +193,14 @@ void bonus(void)
 	text_at(8, 14, WHITE, "BONUS");
 	number_at(8, 20, WHITE, bonus_points);
 
-	// the points go to the score in 20 steps, 2 frames each (the original's
-	// lines 7101-7103 take 3.5)
+	// the points go to the score in 20 steps, 2 frames each
 	for (char i = 0; i < 20; i++)
 	{
 		wait_frames(2);
 		score += bonus_points / 20;
 		show_score();
 	}
-	plan_new();
+	plan_new(plan[plan_pos]);
 	crash_pending = 0;
 	motion_on = 1;
 }

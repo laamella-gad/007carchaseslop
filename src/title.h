@@ -1,4 +1,4 @@
-// The title (lines 11000-11999) and the instructions (12000-12420)
+// The title and the instructions
 #ifndef TITLE_H
 #define TITLE_H
 

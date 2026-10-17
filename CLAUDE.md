@@ -5,9 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 "007 Car Chase" (c) 1985 Coplin Software, a C64 game: a Deflower disassembly of the original and a C rewrite for
-oscar64 that plays at the original's speed, plus fixes. `NOTES.md` is the reference: memory map, BASIC/ML
-mailbox, timing, the original's bugs, and **every difference from the original**. Keep it up to date with each
-change.
+oscar64 that plays at the original's speed, plus fixes. `NOTES.md` is the reference: the rewrite's structure,
+timing, the original's bugs, and **every difference from the original**. Keep it up to date with each change.
 
 The original is a BASIC V2 program (`007.bas`, listing `07.bas`, grep that) driving a machine code helper at
 $C000 (`007`). Disk image `007CARCH.d64`. `007.prg`, `code.asm`, `1.bin`, `2.bin` are an older unused attempt.
@@ -29,22 +28,23 @@ No tests. The user plays and tests in VICE; build only, and don't drive VICE fro
 
 ## Architecture of the rewrite
 
-`src/main.c` includes everything; each header ends with `#pragma compile("x.c")`. One file per part of the
-original, with comments naming the BASIC lines they port:
+`src/main.c` includes everything; each header ends with `#pragma compile("x.c")`. One file per part of the game.
+Comments describe what the code does, not the original's BASIC lines or variables; differences from the original
+go in `NOTES.md`.
 
-- `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` writes text and numbers
+- `frame.c` is what moves in the raster IRQ (keys, joystick, sprite moves, weapon, hits, crash). `system.c` writes text and numbers
   to a row and column of the screen, and has the keys and the name input. `sound.c` has the sounds.
-- `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
-  `src/text.c` holds them as tables (`country_a`, `title_page`...) of rows of screen/colour spans (format in
-  `text.h`) that `play_rows` copies to video memory a row a frame, `show_rows` at once. `text.c`/`text.h` were made once from `007.bas` and a timing
-  run (tools deleted, in git history up to eb9235c) and are now edited by hand.
+- `game.c` holds the shared variables and `play_rows`. `src/text.c` holds the road and the screens as
+  pictures (`country_a`, `title_page`...): a line of characters per screen row, with stand-ins for the
+  graphics, and colour runs (format and stand-ins in `text.h`). `play_rows` draws a line a frame, `show_rows`
+  all at once. Made once from `007.bas` (tools deleted, in git history up to eb9235c), edited by hand.
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
-  `hiscore.c`.
+  `hiscore.c`. The plan is the list of sections the road goes through (`plan[]`); `game()` runs them in turn.
 
 Timing: everything goes by frames of the raster IRQ (`frame_count`). The road goes a row a frame (`row_wait()`
 before each row); the screens show at once and wait for a key or fire (`wait_key`).
 
-Memory: VIC bank 0 as in the original (screen $0400, ROM charset). Sprites are blocks 40-59 at $0a00-$0eff
+Memory: VIC bank 0 (screen $0400, ROM charset). Sprites are blocks 40-59 at $0a00-$0eff
 (their own section, `#embed` of the `.bin` files from Deflower's exports), code and data from $0f00 to $a000.
 
 oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs parentheses, `#embed` emits its

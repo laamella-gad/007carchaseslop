@@ -1,11 +1,11 @@
 #include "title.h"
 #include "game.h"
-#include "helper.h"
+#include "frame.h"
 #include "plan.h"
 #include "sound.h"
 #include "system.h"
 
-// pokev+21,0:forx=0to15:pokev+x,0:next:pokev+21,255
+// All sprites to 0, 0
 static void sprites_reset(void)
 {
 	vic.spr_enable = 0;
@@ -14,18 +14,17 @@ static void sprites_reset(void)
 	vic.spr_enable = 0xff;
 }
 
-// Lines 12400-12420: the credits page
+// The credits page
 static void credits(void)
 {
 	sound_off();
 	sprites_reset();
+	screen_clear(RED);
 	show_rows(credits_page);
-	// line 12420: forx=0to7000:next, 8.4 seconds of "please wait"; here
-	// "press fire to continue", and a wait for a key or fire
 	wait_key();
 }
 
-// Lines 12100-12199: the cars
+// The aim of the game, with the cars
 static void instructions_cars(void)
 {
 	credits();
@@ -34,7 +33,6 @@ static void instructions_cars(void)
 	vic.color_back = DARK_GREY;
 	vic.spr_mcolor0 = BLACK;
 	vic.spr_mcolor1 = RED;
-	// print"{clr}{blk}{down}{rght}  the aim of this game is to shoot the"
 	screen_clear(BLACK);
 	text_at(1, 1, BLACK, "  THE AIM OF THIS GAME IS TO SHOOT THE");
 	show_rows(aim_page);
@@ -53,17 +51,16 @@ static void instructions_cars(void)
 	wait_key();
 }
 
-// Lines 12000-12099
+// The instruction pages
 static void instructions(void)
 {
 	instructions_cars();
 	screen_clear(BLACK);
 	sprites_reset();
 	vic.color_back = DARK_GREY;
-	// print"{home}{down}{rght}{blk}            the car."
 	text_at(1, 1, BLACK, "            THE CAR.");
 	vic.spr_expand_x = 1;
-	// print"            {CBM-T}x9": the line under it
+	// the line under it
 	text_at(2, 0, BLACK, "            \xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3");
 	vic.spr_mcolor0 = BLACK;
 	vic.spr_mcolor1 = RED;
@@ -79,8 +76,9 @@ static void instructions(void)
 	vic.spr_pos[0].x = 0;
 	vic.spr_pos[0].y = 0;
 	vic.spr_expand_x = 0;
+	screen_clear(BLACK);
 	show_rows(controls_page);
-	// the keys next to the joystick's directions (not in the original)
+	// the keys next to the joystick's directions
 	text_at(6, 32, CYAN, "KEYS");
 	text_at(8, 32, BLACK, "SPACE");
 	text_at(10, 32, BLACK, "'.'");
@@ -88,6 +86,7 @@ static void instructions(void)
 	text_at(13, 32, BLACK, "'M'");
 	text_at(16, 32, BLACK, "','");
 	wait_key();
+	screen_clear(CYAN);
 	show_rows(keys_page);
 	wait_key();
 }
@@ -127,8 +126,7 @@ void title(void)
 		while (get_key())
 			;
 		music_on();
-		// line 11070: the raster IRQ scrolls the logo (sys51900 in the
-		// original, 3 pixels a pass of the loop)
+		// the raster IRQ scrolls the logo
 		title_on = 1;
 		key = wait_key();
 		title_on = 0;
@@ -141,11 +139,10 @@ void title(void)
 	sound_off();
 	tune_restart();
 	sprites_reset();
-	// print"{clr}{down}x13{rght}x14{yel}ready"
 	screen_clear(YELLOW);
 	text_at(13, 14, YELLOW, "READY");
 	vic.spr_expand_x = 0;
 	vic.spr_expand_y = 0x80;
 	plan_clear_colours();
-	plan_new();
+	plan_new(ROAD_COUNTRY);
 }

@@ -1,6 +1,9 @@
 #include "system.h"
-#include "helper.h"
+#include "frame.h"
 #include <stdlib.h>
+
+// The KERNAL's jiffy clock, low byte
+#define jiffy_clock (*(volatile char *)0xa2)
 
 void screen_clear(char colour)
 {
@@ -64,7 +67,7 @@ void input_line(char row, char column, char colour, char *s, char max)
 		char under = screen[o];
 		char c;
 		while (!(c = get_key()))
-			screen[o] = (PEEK(0xa2) & 16) ? under ^ 0x80 : under;
+			screen[o] = (jiffy_clock & 16) ? under ^ 0x80 : under;
 		screen[o] = under;
 
 		if (c == PET_RETURN)

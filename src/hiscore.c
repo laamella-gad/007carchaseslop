@@ -3,9 +3,10 @@
 #include "sound.h"
 #include "system.h"
 
-// sc(1-10) and sc$(1-10); 0 unused
-static long scores[11];
-static char names[11][9];
+#define PLACES  10
+
+static long scores[PLACES];
+static char names[PLACES][9];
 
 static void copy_name(char *d, const char *s)
 {
@@ -14,43 +15,38 @@ static void copy_name(char *d, const char *s)
 }
 
 // The table's columns: the rank right-aligned up to column 3, the name from
-// column 5, the score right-aligned up to column 25
+// column 5, the score right-aligned up to column 25, on rows 3-12
 #define NAME_COLUMN     5
 #define NAME_LENGTH     8
 #define SCORE_WIDTH     13
+#define FIRST_ROW       3
 
-#define ink WHITE
+#define INK WHITE
 
 // n right-aligned, ending before offset o
 static void number_right(unsigned o, long n)
 {
 	do
 	{
-		char_at(--o, ink, '0' + n % 10);
+		char_at(--o, INK, '0' + n % 10);
 		n /= 10;
 	} while (n);
 }
 
-// Line 20050/20065: {clr}{down}{rght} top 10 agents :enter your code{down}
 static void show_header(void)
 {
-	screen_clear(ink);
-	text_at(1, 1, ink, " TOP 10 AGENTS :ENTER YOUR CODE");
+	screen_clear(INK);
+	text_at(1, 1, INK, " TOP 10 AGENTS :ENTER YOUR CODE");
 }
-
-// Lines 20051 and 20066, rows 3-12. The original prints two {rght}, the name
-// and the score with two commas between, so the score lands at column 20 or
-// 30 by the name's length; here in columns, with the rank in front
-#define TABLE_ROW       2
 
 static void show_table(void)
 {
-	for (char n = 1; n <= 10; n++)
+	for (char i = 0; i < PLACES; i++)
 	{
-		unsigned o = (TABLE_ROW + n) * 40;
-		number_right(o + NAME_COLUMN - 1, n);
-		text_at(TABLE_ROW + n, NAME_COLUMN, ink, names[n]);
-		number_right(o + NAME_COLUMN + NAME_LENGTH + SCORE_WIDTH, scores[n]);
+		unsigned o = (FIRST_ROW + i) * 40;
+		number_right(o + NAME_COLUMN - 1, i + 1);
+		text_at(FIRST_ROW + i, NAME_COLUMN, INK, names[i]);
+		number_right(o + NAME_COLUMN + NAME_LENGTH + SCORE_WIDTH, scores[i]);
 	}
 }
 
@@ -58,19 +54,17 @@ void hiscore(void)
 {
 	vic.spr_enable = 0;
 	sound_off();
-	if (!(score > scores[10]))
+	if (!(score > scores[PLACES - 1]))
 		return;
 
-	// Lines 20002-20011 and 20100: the place below the scores the new one
-	// beats, a tie below the old score. The original ENDs on a tie, and its
-	// shift (from 9, not 10) loses the 9th place and keeps the 10th
-	char x = 10;
-	while (x > 1 && score > scores[x - 1])
+	// the place below the scores the new one beats, a tie below the old score
+	char x = PLACES - 1;
+	while (x > 0 && score > scores[x - 1])
 		x--;
-	for (char n = 10; n > x; n--)
+	for (char i = PLACES - 1; i > x; i--)
 	{
-		scores[n] = scores[n - 1];
-		copy_name(names[n], names[n - 1]);
+		scores[i] = scores[i - 1];
+		copy_name(names[i], names[i - 1]);
 	}
 	names[x][0] = 0;
 	scores[x] = score;
@@ -79,21 +73,18 @@ void hiscore(void)
 	vic.color_back = RED;
 	show_table();
 
-	// line 20055: the cursor home, then down to the new entry's row
 	while (get_key())
 		;
 	tune_restart();
-	// line 20058: 77 notes of the tune, here while the name is typed (the
-	// original plays them first, 10 seconds)
 	music_notes(77);
 
-	// the name is typed over the entry's name column, cleared first (the
-	// original keeps an old 10th place name there, and INPUT reads its rest);
-	// spaces after the name are cut. No "? ": it would cover the rank
+	// the name is typed over the entry's name column, cleared first; spaces
+	// after the name are cut
+	char row = FIRST_ROW + x;
 	for (char i = NAME_COLUMN; i < NAME_COLUMN + NAME_LENGTH; i++)
-		screen[(TABLE_ROW + x) * 40 + i] = ' ';
+		screen[row * 40 + i] = ' ';
 	char name[NAME_LENGTH + 1];
-	input_line(TABLE_ROW + x, NAME_COLUMN, ink, name, NAME_LENGTH);
+	input_line(row, NAME_COLUMN, INK, name, NAME_LENGTH);
 	char n = 0;
 	while (name[n])
 		n++;
@@ -105,6 +96,6 @@ void hiscore(void)
 
 	show_header();
 	show_table();
-	text_at(19, 7, ink, "PRESS FIRE TO CONTINUE");
+	text_at(19, 7, INK, "PRESS FIRE TO CONTINUE");
 	wait_key();
 }
