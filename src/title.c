@@ -19,7 +19,7 @@ static void credits(void)
 {
 	sound_off();
 	sprites_reset();
-	show_rows(rows_12401, 0, 9);
+	show_rows(credits_page);
 	// line 12420: forx=0to7000:next, 8.4 seconds of "please wait"; here
 	// "press fire to continue", and a wait for a key or fire
 	wait_key();
@@ -37,7 +37,7 @@ static void instructions_cars(void)
 	// print"{clr}{blk}{down}{rght}  the aim of this game is to shoot the"
 	screen_clear(BLACK);
 	text_at(1, 1, BLACK, "  THE AIM OF THIS GAME IS TO SHOOT THE");
-	show_rows(rows_12101, 0, 7);
+	show_rows(aim_page);
 
 	vic.spr_expand_y = 0;
 	vic.spr_expand_x = 0;
@@ -49,7 +49,7 @@ static void instructions_cars(void)
 	vic.spr_pos[1].x = 90;
 	vic.spr_pos[1].y = 155;
 	vic.spr_color[1] = LIGHT_GREY;
-	show_rows(rows_12112, 0, 5);
+	show_rows(plan_page);
 	wait_key();
 }
 
@@ -73,13 +73,13 @@ static void instructions(void)
 	vic.spr_expand_y++;
 	vic.spr_pos[0].x = 150;
 	vic.spr_pos[0].y = 150;
-	show_rows(rows_12020, 0, 14);
+	show_rows(car_page);
 	wait_key();
 
 	vic.spr_pos[0].x = 0;
 	vic.spr_pos[0].y = 0;
 	vic.spr_expand_x = 0;
-	show_rows(rows_12041, 0, 18);
+	show_rows(controls_page);
 	// the keys next to the joystick's directions (not in the original)
 	text_at(6, 32, CYAN, "KEYS");
 	text_at(8, 32, BLACK, "SPACE");
@@ -88,7 +88,7 @@ static void instructions(void)
 	text_at(13, 32, BLACK, "'M'");
 	text_at(16, 32, BLACK, "','");
 	wait_key();
-	show_rows(rows_12070, 0, 13);
+	show_rows(keys_page);
 	wait_key();
 }
 
@@ -107,7 +107,7 @@ void title(void)
 		vic.spr_mcolor1 = LIGHT_GREY;
 		sprites_reset();
 		bonus_points = 0;
-		show_rows(rows_11010, 0, 12);
+		show_rows(title_page);
 
 		// the 007 logo, double width
 		static const char logo[4] = {SPR_LOGO, SPR_LOGO + 1, SPR_LOGO + 1, SPR_LOGO + 2};

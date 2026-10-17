@@ -23,19 +23,19 @@ extern char plan[11];           // cr(1-7): 1-3 where the road goes next, 6 the 
 // Waits for the next row of the road: a row a frame
 void row_wait(void);
 
-// Plays rows from to to-1 of a table of src/text.c, a row a frame: the tune if
-// the row starts it, then its cells; ink for the spans without a colour of
-// their own (the city's houses). play_rows is a macro: as an inlined function
-// oscar64 gave it a stack frame at each call that didn't balance, and the
-// software stack crept into $a000
-void play_rows_ink(const Row *rows, char from, char to, char ink);
-#define play_rows(rows, from, to) play_rows_ink(rows, from, to, 0)
+// Plays a table of src/text.c, a row a frame, starting the tune where a row
+// says so; ink for the spans marked INK (the city's houses). play_rows is a
+// macro: as an inlined function oscar64 gave it a stack frame at each call that
+// didn't balance, and the software stack crept into $a000
+void play_rows_ink(const char *table, char ink);
+#define play_rows(table) play_rows_ink(table, 0)
 
-// The PRINTs of rows from to to-1 at once, for a screen shown whole (title,
-// instructions): no tune, no waits
-void show_rows(const Row *rows, char from, char to);
+// A table at once, for a screen shown whole (title, instructions): no tune, no
+// waits
+void show_rows(const char *table);
 
-// The panel: the score, and the cars left
+// The panel: the TRACK and PLAN labels, the score, and the cars left
+void show_labels(void);
 void show_score(void);
 void show_lives(void);
 

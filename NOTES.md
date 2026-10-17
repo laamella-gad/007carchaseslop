@@ -194,16 +194,16 @@ One file per part, each named after its BASIC lines in the comments:
 | `hiscore.c` | Top 10 | 20000-20110 |
 
 Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turned each run of
-them into a table of `{cells, tune}` (`rows_200` is lines 200-214) that `play_rows` plays back. The
+them into a table in `text.c` (`country_a` is lines 200-214) that `play_rows` plays back. The
 helper calls other than the tune (`sys49152`, `49155`, `49561`) are left out: what they did is in the raster IRQ.
 The other lines are written out in C.
 
 The tables' PRINTs were printed ahead: `bas2c.py` ran a copy of the KERNAL's printer on them and wrote each
-row as the spans of screen codes and colours it leaves (`s200`; a `{clr}` is a clear). `play_rows` copies
-them into video memory (`print_cells`). There is no printer at run time: everything else is written to a
+row as the spans of screen codes and colours it leaves (a `{clr}` is a clear); the format is in `text.h`.
+`play_rows` copies them into video memory a row a frame, `show_rows` all at once. There is no printer at run time: everything else is written to a
 row and column too (`text_at`, `number_at`, `char_at`). A colour a table used before it set one is fixed
 in the cells: the colour the PRINTs before it leave (white mostly, black for the instructions). The city's
-houses are the exception: their spans are marked `CELL_INK` and take the colour of the block
+houses are the exception: their spans are marked `INK` and take the colour of the block
 (`play_rows_ink`), which turns each pass.
 
 Memory: VIC bank 0 as in the original (screen $0400, ROM character set). The sprites are blocks 40-59 at
@@ -367,3 +367,4 @@ Differences from the original:
   colours the PRINTs give, instead of through a printer. The panel's CARS and SCORE, the bridge sign, the city's
   roofs and street lights and the curve's rows are written where the original's PRINTs put them. Screens are
   cleared to the colour the text on them has.
+  The TRACK/PLAN labels the crash writes again come at once, not a row a frame (2 frames).

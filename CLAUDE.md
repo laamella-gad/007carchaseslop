@@ -35,8 +35,8 @@ original, with comments naming the BASIC lines they port:
 - `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` writes text and numbers
   to a row and column of the screen, and has the keys and the name input. `sound.c` has the sounds.
 - `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
-  `src/text.c` holds them as `rows_N` tables of `{cells, tune}` that `play_rows` replays: screen/colour
-  spans that `print_cells` copies to video memory. `text.c`/`text.h` were made once from `007.bas` and a timing
+  `src/text.c` holds them as tables (`country_a`, `title_page`...) of rows of screen/colour spans (format in
+  `text.h`) that `play_rows` copies to video memory a row a frame, `show_rows` at once. `text.c`/`text.h` were made once from `007.bas` and a timing
   run (tools deleted, in git history up to eb9235c) and are now edited by hand.
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
   `hiscore.c`.

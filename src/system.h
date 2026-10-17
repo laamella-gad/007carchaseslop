@@ -69,11 +69,6 @@ void char_at(unsigned o, char colour, char c);
 void text_at(char row, char column, char colour, const char *s);
 void number_at(char row, char column, char colour, long n);
 
-// A row of a src/text.c table: spans of screen codes and colours, written
-// straight to the screen and colour RAM; ink for the spans without a colour of
-// their own
-void print_cells(const char *cells, char ink);
-
 // The next key in the keyboard buffer (GETIN), 0 if none
 char get_key(void);
 

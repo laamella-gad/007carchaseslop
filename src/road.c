@@ -47,7 +47,7 @@ static char country(char setup)
 		colours(GREY);
 		spawn_helicopter();
 		headlights_on = 0;
-		play_rows(rows_189, 0, 6);
+		play_rows(country_start);
 		plan_pos++;
 		player_sprite = SPR_PLAYER;
 		enemy_sprite = SPR_ENEMY;
@@ -59,7 +59,7 @@ static char country(char setup)
 
 	for (;;)
 	{
-		play_rows(rows_200, 0, 15);
+		play_rows(country_a);
 		// a sign before the bridge
 		music_on();
 		if (section_is(3))
@@ -75,7 +75,7 @@ static char country(char setup)
 		if (collide())
 			return NEXT_GAME_OVER;
 
-		play_rows(rows_220, 0, 15);
+		play_rows(country_b);
 		// line 235 also tests cr, not cr(p): never 1
 		distance++;
 		if (distance == ROAD_LENGTH && section_is(1))
@@ -131,11 +131,11 @@ static char city(void)
 	colours(GREY);
 	headlights_on = 0;
 	vic.spr_pos[5].x = 0;
-	play_rows(rows_381, 0, 7);
+	play_rows(city_top);
 	plan_pos++;
 	// the two kinds of street lights take turns
 	signed char lights = 1;
-	play_rows(rows_391, 0, 8);
+	play_rows(city_sides);
 	// the three blocks of houses change colour each time
 	char c1 = LIGHT_GREY, c2 = BROWN, c3 = RED;
 
@@ -144,18 +144,18 @@ static char city(void)
 		music_on();
 		row_wait();
 		chars_at(roofs_middle, 6, c1, 0xa6);
-		play_rows_ink(rows_401, 0, 6, c1);
+		play_rows_ink(city_a, c1);
 		if (collide())
 			return NEXT_GAME_OVER;
 
 		music_on();
-		play_rows_ink(rows_420, 0, 15, c2);
+		play_rows_ink(city_b, c2);
 		if (collide())
 			return NEXT_GAME_OVER;
 
 		row_wait();
 		chars_at(roofs_sides, 6, c3, 0xa6);
-		play_rows_ink(rows_451, 0, 21, c3);
+		play_rows_ink(city_c, c3);
 		if (lights == 1)
 		{
 			row_wait();
@@ -203,10 +203,9 @@ static char city(void)
 static char tunnel(void)
 {
 	// into the tunnel
-	play_rows(rows_500, 0, 5);
-	play_rows(rows_510, 0, 7);
+	play_rows(tunnel_in);
 	music_on();
-	play_rows(rows_520, 0, 9);
+	play_rows(tunnel_mouth);
 
 	// the helicopter's sprite is the headlights now (it stops first, so the IRQ
 	// leaves sprites 5 and 6 alone)
@@ -218,7 +217,8 @@ static char tunnel(void)
 	vic.spr_color[5] = YELLOW;
 	colours(BLACK);
 	plan_pos++;
-	play_rows(rows_794, 0, 20);
+	play_rows(tunnel_start);
+	play_rows(tunnel_a);
 
 	for (;;)
 	{
@@ -226,7 +226,7 @@ static char tunnel(void)
 		sprite_pointers[5] = SPR_HEADLIGHTS;
 		if (collide())
 			return NEXT_GAME_OVER;
-		play_rows(rows_820, 0, 15);
+		play_rows(tunnel_b);
 
 		distance++;
 		if (distance == ROAD_LENGTH && section_is(1))
@@ -247,8 +247,7 @@ static char tunnel(void)
 		vic.spr_pos[5].x = vic.spr_pos[0].x;
 		if (collide())
 			return NEXT_GAME_OVER;
-		// goto800: the tunnel without its first rows
-		play_rows(rows_794, 5, 20);
+		play_rows(tunnel_a);
 	}
 }
 
@@ -294,17 +293,17 @@ static char left_curve(void)
 	colours(GREY);
 	curve_init();
 	curve_drift = DRIFT_LEFT;
-	play_rows(rows_1001, 0, 6);
+	play_rows(left_curve_start);
 	plan_pos++;
 
 	for (;;)
 	{
-		play_rows(rows_1010, 0, 15);
+		play_rows(left_curve_a);
 		music_on();
 		if (collide())
 			return NEXT_GAME_OVER;
 
-		play_rows(rows_1030, 0, 15);
+		play_rows(left_curve_b);
 		distance++;
 		if (distance == CURVE_LENGTH && section_is(1))
 		{
@@ -339,17 +338,17 @@ static char right_curve(void)
 	colours(GREY);
 	curve_init();
 	curve_drift = DRIFT_RIGHT;
-	play_rows(rows_1101, 0, 6);
+	play_rows(right_curve_start);
 	plan_pos++;
 
 	for (;;)
 	{
-		play_rows(rows_1110, 0, 15);
+		play_rows(right_curve_a);
 		music_on();
 		if (collide())
 			return NEXT_GAME_OVER;
 
-		play_rows(rows_1130, 0, 15);
+		play_rows(right_curve_b);
 		distance++;
 		if (distance == CURVE_LENGTH && section_is(1))
 		{
@@ -396,7 +395,7 @@ static void bridge_end(void)
 // Lines 2100-2250
 static char bridge(void)
 {
-	play_rows(rows_2100, 0, 5);
+	play_rows(bridge_start);
 	colours(GREY);
 	// the cars on the road blow up, for points
 	for (char car = 1; car <= 4; car++)
@@ -409,7 +408,7 @@ static char bridge(void)
 
 	for (;;)
 	{
-		play_rows(rows_2200, 0, 15);
+		play_rows(bridge_a);
 		collide();
 		music_on();
 		if (lives == -1)
@@ -419,7 +418,7 @@ static char bridge(void)
 		}
 		water();
 
-		play_rows(rows_2220, 0, 15);
+		play_rows(bridge_b);
 		distance++;
 		if (distance == BRIDGE_LENGTH)
 		{
@@ -445,7 +444,7 @@ static char bridge(void)
 // Lines 91-98 and 180: the panel, the cars and the helicopter
 static void start(void)
 {
-	play_rows(rows_91, 0, 2);
+	show_labels();
 	for (char i = 0; i < 21; i++)
 		colour_ram[23 * 40 + 5 + i] = YELLOW;
 	vic.spr_mcolor0 = BLACK;

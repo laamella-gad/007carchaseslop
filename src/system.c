@@ -45,41 +45,6 @@ void number_at(char row, char column, char colour, long n)
 		char_at(o++, colour, digits[--i]);
 }
 
-// The cells: spans of [offset high, offset low, colour, length, screen codes],
-// or [0xfe, colour] (the screen cleared) or [0xfd, colour] (rows 0-19
-// cleared), until 0xff. CELL_INK as the colour takes the colour given
-#define CELL_INK        0x40
-
-void print_cells(const char *p, char ink)
-{
-	char hi;
-	while ((hi = p[0]) != 0xff)
-	{
-		if (hi >= 0xfd)
-		{
-			unsigned n = hi == 0xfe ? 1000 : 800;
-			for (unsigned i = 0; i < n; i++)
-			{
-				screen[i] = ' ';
-				colour_ram[i] = p[1];
-			}
-			p += 2;
-			continue;
-		}
-		char colour = p[2] == CELL_INK ? ink : p[2];
-		unsigned o = (unsigned)hi << 8 | p[1];
-		volatile char *s = screen + o, *c = colour_ram + o;
-		char n = p[3];
-		p += 4;
-		for (char i = 0; i < n; i++)
-		{
-			s[i] = p[i];
-			c[i] = colour;
-		}
-		p += n;
-	}
-}
-
 char get_key(void)
 {
 	return __asm {
