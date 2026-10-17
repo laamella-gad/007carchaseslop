@@ -12,6 +12,7 @@ volatile char car_direction[4];
 volatile char car_shot[4];
 volatile char crash_pending, curve_drift;
 volatile char quit_request, crash_anim, title_on, glide_on;
+volatile char on_bridge, bridge_edge;
 volatile char car_boom[4];
 
 // Joystick in port 2 as $dc00 reads it after the KERNAL's key scan; only one
@@ -52,6 +53,12 @@ volatile char car_boom[4];
 // Frames each gun frame shows, halved with turbo. The original shows one a
 // weapon_update: every 9.1 frames on average, mostly 2-4
 #define GUN_FRAMES          4
+
+// The bridge's water, by the player's x: the left bank below WATER_LEFT, the
+// edge of the broken bridge from EDGE_LEFT to EDGE_RIGHT, the road right of it
+#define WATER_LEFT  76
+#define EDGE_LEFT   171
+#define EDGE_RIGHT  199
 
 // The player stops at the kerbs. The original stops only at exactly these x,
 // so from an x past a kerb (after the crash slide) the car walks off the road
@@ -315,6 +322,19 @@ static void crash_test(void)
 	char by = vic.spr_pos[6].y;
 	if (bx > 0 && bx > x - 10 && bx < x + 10 && by > 140 && by < 180)
 		crash_pending = 1;
+	// lines 2216 and 2240: into the bridge's edge. The original tests twice a
+	// pass of the bridge loop, so the player could get across between two
+	if (bridge_edge && x > EDGE_LEFT - 1 && x < EDGE_RIGHT + 1)
+		crash_pending = 1;
+}
+
+// The player's shape on the bridge: the boat on the water, the car on the left
+// bank (where the crash slide ends) and on the road right of the edge. The
+// original sets the boat once, at line 2121, when x is below 180
+static void bridge_shape(void)
+{
+	char x = vic.spr_pos[0].x;
+	sprite_pointers[0] = x >= WATER_LEFT && x < EDGE_LEFT ? SPR_BRIDGE_PLAYER : SPR_PLAYER;
 }
 
 static void print_credit(void)
@@ -424,6 +444,8 @@ __interrupt void cars_frame(void)
 		player_frame();
 		if (curve_drift)
 			drift_frame();
+		if (on_bridge && !crash_anim)
+			bridge_shape();
 	}
 	if (headlights_on == 1)
 		vic.spr_pos[5].x = vic.spr_pos[0].x;

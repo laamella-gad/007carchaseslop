@@ -114,8 +114,9 @@ the helicopter 5, the slower car directions 2 or 3.
   | Right curve | 1100-1160 | 3 | country | left curve | country |
   | Bridge | 2100-2250 | 30 | country | | |
 
-  The country section says "bridge out on left" when the bridge is next. On the bridge, x 170-200 is water
-  (a crash).
+  The country section says "bridge out on left" when the bridge is next. On the bridge, the player sails the
+  water left of the road as a boat (sprite 48, the enemies 49); x 171-199, the edge between water and road,
+  is a crash.
 - `gosub 5`, each step: collisions are checked by comparing sprite coordinates.
   - An enemy within ±18 pixels in x is shot by the guns at y 110-140, or stopped by the smoke at y 175-200: 33
     explosion, `sound_explosion`, score `(turbo+1)*50`.
@@ -321,5 +322,11 @@ Differences from the original:
     time at twice the speed the original's loop took, in 8.8 fixed point; `bonus_animation` waits for each. The
     siren steps voice 1 to voice 3's sawtooth once a frame for half the time of line 13014 (162 frames),
     where the original takes 501 steps in 324 frames.
+  - On the bridge the raster IRQ picks the player's shape every frame (`on_bridge`, `bridge_shape`): the boat
+    (sprite 48) over the water, x 76-170, the car on the bank and the bridge's road. The original sets the
+    boat once at line 2121, if x is below 180, and keeps it for the whole bridge.
+  - The bridge's edge, x 171-199, is tested every frame in the raster IRQ (`bridge_edge`, in `crash_test`)
+    from the first test at line 2216 to the end of the bridge, and goes through `crash_pending` like the
+    other crashes. The original tests it twice a pass (lines 2216/2240), so a player could cross it between two.
 - INPUT: DEL rubs out the last character instead of pulling the rest of the screen row left; no cursor keys.
 - The printer has no logical lines (the game never links two rows).

@@ -39,6 +39,11 @@ extern volatile char motion_hold;
 extern volatile char motion_on;
 // Set during the crash slide: the player can't steer
 extern volatile char player_hold;
+// On the bridge (lines 2100-2250): the player is a boat on the water and a car
+// on the bank and the road (in the IRQ). With bridge_edge set too, the IRQ
+// tests the bridge's edge (x 171-199) for a crash every frame
+extern volatile char on_bridge, bridge_edge;
+
 // Set by the IRQ on F7; the collision pass ends the game
 extern volatile char quit_request;
 

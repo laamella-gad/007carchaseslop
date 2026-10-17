@@ -500,12 +500,18 @@ static char right_curve(void)
 	}
 }
 
-// Into the water between x 170 and 200: lines 2216 and 2240
+// Into the bridge's edge between x 170 and 200: lines 2216 and 2240. The
+// raster IRQ tests it every frame (crash_test) from the first of these on, so
+// a player who comes onto the bridge there has the original's time to move
 static void water(void)
 {
-	char x = vic.spr_pos[0].x;
-	if (x > 170 && x < 200)
-		crash_skid();
+	bridge_edge = 1;
+}
+
+static void bridge_end(void)
+{
+	on_bridge = 0;
+	bridge_edge = 0;
 }
 
 // Lines 2100-2250
@@ -522,8 +528,8 @@ static char bridge(void)
 	player_sprite = SPR_BRIDGE_PLAYER;
 	enemy_sprite = SPR_BRIDGE_ENEMY;
 	LINE(2120);
-	if (vic.spr_pos[0].x < 180)
-		sprite_pointers[0] = player_sprite;
+	// the IRQ gives the player the boat on the water (bridge_shape)
+	on_bridge = 1;
 	LINE(2121);
 
 	for (;;)
@@ -534,7 +540,10 @@ static char bridge(void)
 		music_on();
 		LINE(2215);
 		if (lives == -1)
+		{
+			bridge_end();
 			return NEXT_GAME_OVER;
+		}
 		water();
 		LINE(2216);
 
@@ -544,6 +553,7 @@ static char bridge(void)
 		if (distance == 30)
 		{
 			distance = 0;
+			bridge_end();
 			return NEXT_COUNTRY;
 		}
 		music_on();
@@ -601,6 +611,9 @@ static void start(void)
 	vic.spr_enable = 0xff;
 	crash_pending = 0;
 	quit_request = 0;
+	// after a game that ended on the bridge (COLLIDE returns at once)
+	on_bridge = 0;
+	bridge_edge = 0;
 	motion_on = 1;
 	LINE(180);
 }
