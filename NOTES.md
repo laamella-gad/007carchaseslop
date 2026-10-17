@@ -155,6 +155,9 @@ the helicopter 5, the slower car directions 2 or 3.
   the whole screen row: for a 10th place, line 20002 doesn't clear the old name, so its rest after the typed
   name becomes part of the new one (`left$` 8; "AB" over "ZORRO" is "ABRRO"). Short names keep the spaces up
   to 8 characters.
+- **The panel goes.** The city (381) and the tunnel (794) start with `{clr}`, which erases the panel and the
+  track plan. The score comes back with the next collision pass (line 11), CARS only after a crash (6010), and
+  the TRACK/PLAN labels and the plan only at the next bonus.
 - Line 235 tests `cr=1`, a plain variable that is always 0, next to the `cr(p)` tests: dead.
 - The routines sit at round addresses with gaps of zeros between them. Some 3-byte instructions were cut to
   `rts nop nop` ($c154, $c187, $c193, $c1c6, $c1d2). $c1e2 still holds the operand of the instruction that was at
@@ -207,16 +210,17 @@ One file per part, each named after its BASIC lines in the comments:
 | `hiscore.c` | Top 10 | 20000-20110 |
 
 Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turns each run of
-them into a table of `{text, helper calls, cycles}` (`rows_200` is lines 200-214) that `play_rows` plays back.
+them into a table of `{cells, helper calls, cycles}` (`rows_200` is lines 200-214) that `play_rows` plays back.
 The other lines are written out in C, each followed by its `LINE(n)` pace.
 
-A table that draws the same wherever the cursor was (it homes the cursor and sets the colour and reverse
-before it prints, and doesn't scroll or clear) is printed at build time instead: `bas2c.py` runs the printer
-on it and writes each row as the spans of screen codes and colours it leaves (`s200`), with the cursor,
-colour and reverse after it. `play_rows` copies them into video memory (`print_cells`, `OP_SCREEN`), and the
-table's PETSCII strings are left out. These are the country, curve, bridge and tunnel entry tables and the
-"bridge out" sign (rows_189-2220); the city, tunnel, panel, crash, title and top 10 tables depend on where
-the cursor was, or its colour or reverse, and still print.
+The tables' PRINTs are printed at build time: `bas2c.py` runs a copy of the printer on them and writes each
+row as the spans of screen codes and colours it leaves (`s200`; a `{clr}` is a clear), then the cursor, colour
+and reverse after it. `play_rows` copies them into video memory (`print_cells`), so the tables' PETSCII strings
+are left out. A colour or reverse a table uses before it sets one is the printer's at run time: the city's
+houses take the colour line 400/419/450 printed, and the tunnel's line 800 the colour of the score after a
+collision pass on `goto800` (the table is rendered from row 5 on as if played from there). Where the cursor is
+must be known: the tables that print before homing it (391, 401, 451, 12020, 12101, 12112) start where the
+PRINTs before them leave it, which `bas2c.py` prints too (`ENTRY`). A row that would scroll stops the build.
 
 Memory: VIC bank 0 as in the original (screen $0400, ROM character set). The sprites are blocks 40-59 at
 $0a00-$0eff: 40-54 where the original has them, and its blocks 13-15 and 33-34 (at $0340 and $0840) moved to
@@ -235,6 +239,8 @@ Differences from the original:
 - ?ILLEGAL QUANTITY: the crash slide (6000/6001) and the bonus (13010) stop x at 0 instead of stopping the
   program. The left curve's `-20` (1026, 1049) goes to 80 as the line meant.
 - Phase 4 fixes:
+  - The city and tunnel `{clr}` clear rows 0-19 only (`PANEL_KEPT` in `bas2c.py`), so the panel and plan stay.
+    In the tunnel the plan and the TRACK/PLAN labels are black on black, as they would be in the original.
   - The tune plays its 76 notes from note 0, without the two notes from past the table.
   - High scores: a new score goes below the scores it doesn't beat, so a tie is entered too instead of `end`;
     the entries from there move down one, 10th place drops out. The name column of the entry is cleared before

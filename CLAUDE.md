@@ -37,9 +37,9 @@ original, with comments naming the BASIC lines they port:
 - `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` has the PETSCII
   printer that mimics the KERNAL, keys, INPUT and pacing. `sound.c` has the sounds.
 - `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
-  `bas2c.py` turns runs of them into `rows_N` tables of `{text, helper ops, cycles}` that `play_rows` replays.
-  Tables that don't depend on the cursor's start state are rendered at build time to screen/colour spans
-  (`OP_SCREEN`, `print_cells`), the rest still go through the printer.
+  `bas2c.py` turns runs of them into `rows_N` tables of `{cells, helper ops, cycles}` that `play_rows` replays.
+  The tables are rendered at build time to screen/colour spans that `print_cells` copies to video memory;
+  a table that prints before homing the cursor needs its entry in `ENTRY` in `bas2c.py`.
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
   `hiscore.c`.
 

@@ -25,14 +25,7 @@ void play_rows(const Row *rows, char from, char to)
 			turbo_frame();
 		if (ops & OP_WEAPON)
 			weapon_update();
-		if (ops & OP_SCREEN)
-			print_cells(r->text);
-		else
-		{
-			print(r->text);
-			if (ops & OP_NEWLINE)
-				put(PET_RETURN);
-		}
+		print_cells(r->cells);
 		pace(r->cycles);
 		// a crash goes on after the row it happens in, not at the next
 		// collision pass. Its prints move the cursor, and the next row goes

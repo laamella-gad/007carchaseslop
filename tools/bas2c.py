@@ -7,11 +7,13 @@
   share one), named after the first line that has it: t200, t6010, t6010_2.
 - A "row line" does nothing but SYS calls into the helper and one PRINT of a
   literal. Runs of row lines become Row tables (rows_200 for lines 200-214) that
-  road.c plays back.
-- A table whose rows draw the same thing wherever the cursor was (it homes the
-  cursor and sets the colour and reverse before printing) is rendered here:
-  each row becomes the screen and colour cells it writes, copied straight to
-  video memory (OP_SCREEN), and its PETSCII strings are left out.
+  play_rows plays back.
+- The PRINTs of the tables are printed here, with system.c's printer: each row
+  becomes the screen and colour cells it writes and the printer's state after
+  it, which print_cells copies straight to video memory. The colour and reverse
+  a table finds can be the printer's at run time; where the cursor is must be
+  known (ENTRY for the tables that print before homing it). Strings only the
+  tables print are left out.
 - CYCLES_<line> is the time the original spends on a line per pass, without the
   subroutines it calls (from tools/c64time.c). The rewrite waits that long.
 """
@@ -111,73 +113,154 @@ class Unknown(Exception):
     pass
 
 
-def render(run):
-    """The cells each row of a table writes, as system.c's put() would print them
-    from any start state, or None if a row depends on it (or scrolls or clears).
+# Where the cursor is when a table starts that prints before homing it: the
+# PRINTs before the table, from one that homes or clears it
+ENTRY = {
+    391: range(381, 388),       # the table of lines 381-387
+    401: [400],
+    451: [450],
+    12020: [12001, 12002],
+    12101: [12100],
+    12112: [12100] + list(range(12101, 12108)),
+}
 
-    A row is spans of [offset high, offset low, colour, length, screen codes],
-    then 0xff and the printer's state after it: row, column, colour | reverse."""
-    state = {"row": None, "col": None, "ink": None, "rev": None}
+# Tables whose clear stops above the panel (rows 20-24), which the original
+# erases and never redraws: the city and the tunnel
+PANEL_KEPT = {381, 794}
 
-    def known(*keys):
-        if any(state[k] is None for k in keys):
+# The rows a table is played from besides its first: goto800 in the tunnel
+ENTRY_ROWS = {794: [5]}
+
+# Cell colours and reverse that come from the printer when the table is played
+INK = 0x40      # the printer's colour
+REVERSE = 0x80  # the screen codes take the printer's reverse
+SAME = 0x20     # end state: the reverse stays the printer's
+
+
+class Printer:
+    """system.c's put(), with the cursor, colour and reverse None while they're
+    the printer's from before the table."""
+
+    def __init__(self, keep_panel=False):
+        self.row = self.col = self.ink = self.rev = None
+        self.spans = []
+        self.keep_panel = keep_panel
+
+    def known(self):
+        if self.row is None:
             raise Unknown
 
-    def down():
-        known("row")
-        if state["row"] == 24:
+    def down(self):
+        self.known()
+        if self.row == 24:
             raise Unknown       # a scroll
-        state["row"] += 1
+        self.row += 1
 
-    def right():
-        known("row", "col")
-        state["col"] += 1
-        if state["col"] == 40:
-            state["col"] = 0
-            down()
+    def right(self):
+        self.known()
+        self.col += 1
+        if self.col == 40:
+            self.col = 0
+            self.down()
 
-    out = []
+    def put(self, c):
+        if c in COLOURS:
+            self.ink = COLOURS[c]
+        elif c in (0x0d, 0x8d):
+            self.known()
+            self.col = 0
+            self.rev = 0
+            self.down()
+        elif c == 0x11:
+            self.down()
+        elif c == 0x12:
+            self.rev = 0x80
+        elif c == 0x92:
+            self.rev = 0
+        elif c == 0x13:
+            self.row = self.col = 0
+        elif c == 0x93:
+            self.spans.append(("clear", INK if self.ink is None else self.ink))
+            self.row = self.col = 0
+        elif c == 0x1d:
+            self.right()
+        elif c == 0x91:
+            self.known()
+            if self.row:
+                self.row -= 1
+        elif c == 0x9d:
+            self.known()
+            if self.col:
+                self.col -= 1
+            elif self.row:
+                self.col = 39
+                self.row -= 1
+        elif c < 0x20 or 0x80 <= c < 0xa0:
+            pass
+        else:
+            self.known()
+            o = self.row * 40 + self.col
+            colour = (INK if self.ink is None else self.ink) | (REVERSE if self.rev is None else 0)
+            sc = screen_code(c) | (self.rev or 0)
+            last = self.spans[-1] if self.spans else None
+            if last and last[0] != "clear" and last[0] + len(last[2]) == o and last[1] == colour:
+                last[2].append(sc)
+            else:
+                self.spans.append((o, colour, [sc]))
+            self.right()
+
+    def print(self, lit, newline):
+        for c in lit + (b"\r" if newline else b""):
+            self.put(c)
+
+    def cells(self):
+        """The spans so far, then the state: [offset high, offset low, colour,
+        length, screen codes]..., [0xfe, colour] for a clear ([0xfd, colour] for
+        one that keeps the panel), then [0xff, row,
+        column, colour | reverse]."""
+        out = []
+        for span in self.spans:
+            if span[0] == "clear":
+                out += [0xfd if self.keep_panel else 0xfe, span[1]]
+            else:
+                o, colour, codes = span
+                out += [o >> 8, o & 0xff, colour, len(codes)] + codes
+        self.spans = []
+        self.known()
+        ink = INK if self.ink is None else self.ink
+        rev = SAME if self.rev is None else self.rev
+        return out + [0xff, self.row, self.col, ink | rev]
+
+
+def last_print(body):
+    """The literal and newline of the last PRINT of a line."""
+    m = re.findall(rb'\x99"([^"]*)"(;?)', body)[-1]
+    return m[0], not m[1]
+
+
+def render(run, bodies):
+    """The cells each row of a table writes, as system.c's put() would print
+    them. Stops if a row can't be rendered: it scrolls, or prints where the
+    cursor was and ENTRY doesn't say where that is."""
+    first = run[0][0]
+    p = Printer(first in PANEL_KEPT)
     try:
-        for num, (ops, lit, newline) in run:
-            spans = []
-            for c in lit + (b"\r" if newline else b""):
-                if c in COLOURS:
-                    state["ink"] = COLOURS[c]
-                elif c in (0x0d, 0x8d):
-                    state["col"] = 0
-                    state["rev"] = 0
-                    down()
-                elif c == 0x11:
-                    down()
-                elif c == 0x12:
-                    state["rev"] = 0x80
-                elif c == 0x92:
-                    state["rev"] = 0
-                elif c == 0x13:
-                    state["row"] = state["col"] = 0
-                elif c == 0x1d:
-                    right()
-                elif c in (0x91, 0x9d, 0x93):
-                    raise Unknown       # not in the tables rendered so far
-                elif c < 0x20 or 0x80 <= c < 0xa0:
-                    pass
-                else:
-                    known("row", "col", "ink", "rev")
-                    o = state["row"] * 40 + state["col"]
-                    sc = screen_code(c) | state["rev"]
-                    if spans and spans[-1][0] + len(spans[-1][2]) == o and spans[-1][1] == state["ink"]:
-                        spans[-1][2].append(sc)
-                    else:
-                        spans.append((o, state["ink"], [sc]))
-                    right()
-            known("row", "col", "ink", "rev")
-            cells = []
-            for o, ink, codes in spans:
-                cells += [o >> 8, o & 0xff, ink, len(codes)] + codes
-            cells += [0xff, state["row"], state["col"], state["ink"] | state["rev"]]
-            out.append(cells)
+        if first in ENTRY:
+            for num in ENTRY[first]:
+                p.print(*last_print(bodies[num]))
+            p.spans = []
+            # only the cursor: the colour and reverse are the printer's
+            p.ink = p.rev = None
+        out = []
+        for i, (num, (ops, lit, newline)) in enumerate(run):
+            if i in ENTRY_ROWS.get(first, []):
+                row, col = p.row, p.col
+                p = Printer(first in PANEL_KEPT)
+                p.row, p.col = row, col
+            p.print(lit, newline)
+            out.append(p.cells())
     except Unknown:
-        return None
+        sys.exit("bas2c.py: can't render line %d: it scrolls, or the cursor isn't known" % num)
     return out
 
 
@@ -219,10 +302,11 @@ def main():
             runs.append(run)
         run = []
 
-    # the rendered tables, and the strings only they print, which aren't needed
-    rendered = {run[0][0]: render(run) for run in runs}
-    in_rendered = set(num for run in runs if rendered[run[0][0]] for num, r in run)
-    printed = set(lit for num, body in lines if num not in in_rendered for lit in literals(body))
+    # the tables rendered, and the strings only they print left out
+    bodies = dict(lines)
+    rendered = {run[0][0]: render(run, bodies) for run in runs}
+    in_tables = set(num for run in runs for num, r in run)
+    printed = set(lit for num, body in lines if num not in in_tables for lit in literals(body))
     arrays = [(name, lit) for name, lit in arrays if lit in printed]
 
     c = open(out + "/text.c", "w")
@@ -233,17 +317,11 @@ def main():
         c.write("const char %s[] = {%s0};\n" % (name, "".join("%d," % b for b in lit)))
     c.write("\n")
     for run in runs:
-        cells = rendered[run[0][0]]
-        if cells:
-            for (num, r), row in zip(run, cells):
-                c.write("static const char s%d[] = {%s};\n" % (num, ",".join("%d" % b for b in row)))
+        for (num, r), row in zip(run, rendered[run[0][0]]):
+            c.write("static const char s%d[] = {%s};\n" % (num, ",".join("%d" % b for b in row)))
         c.write("const Row rows_%d[%d] = {\n" % (run[0][0], len(run)))
         for num, (ops, lit, newline) in run:
-            if cells:
-                flags, text = ops + ["OP_SCREEN"], "s%d" % num
-            else:
-                flags, text = ops + (["OP_NEWLINE"] if newline else []), names[lit]
-            c.write("\t{%s, %s, %d},\t// %d\n" % (text, " | ".join(flags) or "0",
+            c.write("\t{s%d, %s, %d},\t// %d\n" % (num, " | ".join(ops) or "0",
                                                  cycles.get(num, 0), num))
         c.write("};\n\n")
 
@@ -251,10 +329,9 @@ def main():
     h.write("#ifndef TEXT_H\n#define TEXT_H\n\n")
     h.write("// What a row line does before its PRINT, in this order\n")
     h.write("#define OP_TUNE\t\t1\t// sys51000\n#define OP_FRAME\t2\t// sys49155\n")
-    h.write("#define OP_TURBO\t4\t// sys49152\n#define OP_WEAPON\t8\t// sys49561\n")
-    h.write("#define OP_NEWLINE\t16\t// the PRINT ends without ';'\n")
-    h.write("#define OP_SCREEN\t32\t// text is the cells the PRINT writes, rendered\n\n")
-    h.write("typedef struct {\n\tconst char *text;\n\tchar ops;\n\tunsigned long cycles;\n} Row;\n\n")
+    h.write("#define OP_TURBO\t4\t// sys49152\n#define OP_WEAPON\t8\t// sys49561\n\n")
+    h.write("// cells: what the PRINT writes, for print_cells\n")
+    h.write("typedef struct {\n\tconst char *cells;\n\tchar ops;\n\tunsigned long cycles;\n} Row;\n\n")
     for name, lit in arrays:
         h.write("extern const char %s[];\n" % name)
     h.write("\n")

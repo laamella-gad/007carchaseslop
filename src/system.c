@@ -208,27 +208,55 @@ void print_restore(void)
 	reverse = saved_reverse;
 }
 
+// The colour byte of a span: a colour, or CELL_INK for the printer's; with
+// CELL_REVERSE the screen codes take the printer's reverse. In the state at the
+// end, CELL_SAME keeps the printer's reverse
+#define CELL_INK        0x40
+#define CELL_REVERSE    0x80
+#define CELL_SAME       0x20
+
 void print_cells(const char *p)
 {
-	// [offset high, offset low, colour, length, screen codes] until 0xff
+	// [offset high, offset low, colour, length, screen codes], [0xfe, colour]
+	// (a clear) or [0xfd, colour] (a clear above the panel) until 0xff
 	char hi;
 	while ((hi = p[0]) != 0xff)
 	{
+		if (hi >= 0xfd)
+		{
+			char colour = p[1] & CELL_INK ? ink : p[1];
+			unsigned n = hi == 0xfe ? 1000 : 800;
+			for (unsigned i = 0; i < n; i++)
+			{
+				screen[i] = ' ';
+				colour_ram[i] = colour;
+			}
+			p += 2;
+			continue;
+		}
+		char colour = p[2];
+		char rev = 0;
+		if (colour & CELL_REVERSE)
+			rev = reverse;
+		colour = colour & CELL_INK ? ink : colour & 0x0f;
 		unsigned o = (unsigned)hi << 8 | p[1];
 		volatile char *s = screen + o, *c = colour_ram + o;
-		char colour = p[2], n = p[3];
+		char n = p[3];
 		p += 4;
 		for (char i = 0; i < n; i++)
 		{
-			s[i] = p[i];
+			s[i] = p[i] | rev;
 			c[i] = colour;
 		}
 		p += n;
 	}
 	row = p[1];
 	column = p[2];
-	ink = p[3] & 0x0f;
-	reverse = p[3] & 0x80;
+	char state = p[3];
+	if (!(state & CELL_INK))
+		ink = state & 0x0f;
+	if (!(state & CELL_SAME))
+		reverse = state & 0x80;
 }
 
 void print_comma(void)
