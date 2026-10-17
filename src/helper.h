@@ -70,11 +70,6 @@ void glide(volatile char *reg, char to, unsigned speed);
 // The joystick's fire button (port 2) held down
 char joystick_fire(void);
 
-// A PAL frame
-#define FRAME_CYCLES    19656ul
-// A speed in 1/256 pixels a frame for px pixels in the given cycles
-#define PX_SPEED(px, cycles)    ((unsigned)((px) * 256ul * FRAME_CYCLES / (cycles)))
-
 // From the raster IRQ, once a frame: F1, F3, F5 and F7, the cars, the player,
 // the helicopter and its bomb, the weapon, the crashes, the credit, the
 // helicopter's explosion flash, the title's logo and the bonus animation

@@ -193,14 +193,16 @@ The road doesn't use the measured times: it goes a row a frame. `row_wait()` (ga
 frame of the raster IRQ (`frame_count`) before each road row, and the rest of the road code (the collision
 pass, spawns, section tests) takes no time. The original takes 1-1.5 frames a row and about 12.4 frames for a
 collision pass, about 2.5 frames a row on average (country 2.7, tunnel 2.35), so here the road scrolls at the
-speed of the original's rows but without the stall of each pass. `row_wait` restarts the pace, so measured
-lines after a row (the bonus, the track plan) count from it. The crash waits for its animation in the IRQ.
+speed of the original's rows but without the stall of each pass. The crash waits for its animation in the
+IRQ.
 
 `LINES(a, b)` waits for the lines from a to b of the listing (from `SUM_<line>`, the cycles of all lines up to
-it), `SPEND(a, b)` and `spend()` add their time without waiting; the bonus and the track plan use them.
+it), `SPEND(a, b)` and `spend()` add their time without waiting. Only the start of a game (lines 39-43, in
+`main.c`) still uses them.
 
 Not measured, estimated: the pause delay (line 58, 1001 FOR loops at about 1350 cycles; not needed now, the
-pause goes on a key press) and line 13010 (the player to the left before the bonus, about 2750 cycles a step).
+pause goes on a key press) and line 13010 (the player to the left before the bonus, about 2750 cycles a step,
+7 pixels a frame).
 
 ## The rewrite
 
@@ -274,8 +276,12 @@ Differences from the original:
     between rows; the original takes 1-1.5 frames a row plus about 12.4 frames a pass. The road scrolls
     about as fast as the original's rows, but passes (spawns, the helicopter, sections) come about twice as
     often, so the game is faster and harder: a game has about 2.2 times the collision passes in the same time.
-    The crash text needs no pace either (the crash waits for its animation). The bonus and the track plan
-    keep the original's measured timing.
+    The crash text needs no pace either (the crash waits for its animation).
+  - The track plan takes no time: it shows at once, where the original draws it piece by piece (about 3
+    seconds with the clearing of its area). The bonus has no measured line times either: the animation's
+    moves all go at 2 pixels a frame (the original's loops take 1-7, the player's slide to the left the
+    fastest), its pause (line 13018) and the siren take half the original's time, the lines between them
+    none, and the points go to the score a step every 2 frames (3.5 in the original).
   - The high scores and the title take no time but the waits for keys (the credits page's delay loop, line
     12420, `forx=0to7000`, 8.4 seconds, is a wait for a key too): their screens show at once, where the original
     builds them up line by line (the title and the high score table in about 0.6 seconds each), and the
@@ -366,7 +372,7 @@ Differences from the original:
   - The title's logo scrolls in the raster IRQ (`title_on`), at twice the original's average speed (3 pixels a
     pass of line 11070, a pass every 5.8 frames as measured, about 0.5 pixels a frame; here 264/256), smoothly.
   - The bonus animation's moves are in the raster IRQ (`glide`, `anim_frame`), one sprite coordinate at a
-    time at twice the speed the original's loop took, in 8.8 fixed point; `bonus_animation` waits for each. The
+    time, all at one speed (`BONUS_SPEED`), in 8.8 fixed point; `bonus_animation` waits for each. The
     siren steps voice 1 to voice 3's sawtooth once a frame for half the time of line 13014 (162 frames),
     where the original takes 501 steps in 324 frames.
   - On the bridge the raster IRQ picks the player's shape every frame (`on_bridge`, `bridge_shape`): the boat

@@ -624,9 +624,11 @@ __interrupt void heli_flash_frame(void)
 // 5.8 frames, in 1/256 pixels a frame
 #define TITLE_SPEED     264
 
-static volatile char *glide_reg;
-static char glide_to, glide_f;
-static unsigned glide_speed;
+// volatile: only the raster IRQ reads them, and with glide() inlined oscar64
+// drops the stores of all but the last of a row of glides
+static volatile char * volatile glide_reg;
+static volatile char glide_to, glide_f;
+static volatile unsigned glide_speed;
 
 void glide(volatile char *reg, char to, unsigned speed)
 {
