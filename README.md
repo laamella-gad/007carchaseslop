@@ -13,16 +13,17 @@ open it in VICE. Press `I` on the title screen for the instructions.
 
 ## The original
 
-The original is a BASIC V2 program that does most of the work, from the road to the collisions and the score. It
-has a small machine code helper at $c000 for the sprites, the keys and the sound. Because BASIC is slow, the
-whole game runs at the speed of the interpreter.
+[A gameplay video.](https://www.youtube.com/watch?v=9VdxBlnnm0g)
 
-A small C64 emulator (`tools/c64time.c`, now only in the git history) ran the original from a snapshot for
-20000 emulated seconds and timed every BASIC line in PAL cycles. The title, the instructions, the bonus, the
-track plan and the high scores keep those times. The road doesn't: it scrolls a row every frame, where the
-original stalls for about a quarter of a second at every collision check, so the game is faster and harder.
-The cars, the player, the weapons and the sounds move every frame in a raster interrupt, smoothly, where the
-original moves them in jumps whenever BASIC gets round to it.
+The author clearly set high goals for this game - it is a 3D Spy Hunter clone with various enemies and locations.
+The goals are much too high for a game written in BASIC, and it wobbled along in a humorous way.
+
+The most interesting technical thing going on in this game is how it manages to draw a 3D road that has a somewhat convincing movement feeling.
+It does this by running a few ticks of the main game loop, then updating one horizontal line of the road with a PRINT, and then the whole thing again but one line higher.
+In a way it has implemented cooperative multitasking.
+
+To give this game the glory it deserves, I let Claude Code rewrite it in C, and let it make a long list of improvements.
+No longer does it wobble.
 
 ## Changes
 
@@ -45,12 +46,12 @@ Bugs fixed from the original:
 
 Gameplay changes:
 
-- The road sections are 1.5 times as long.
+- No more BASIC, everything now runs at 50Hz from the raster IRQ.
 - The joystick steers and fires at the same time, and diagonals work. The original only takes one direction or
   fire at a time.
 - The name for the high score table can be typed right away, while the tune plays; the original makes you wait
   for the whole tune.
-- F5 pauses at once and F5 again goes on; F7 is never missed. No "wait for data transfer" at the start.
+- F5 pauses at once and F5 again goes on; F7 is never missed.
 
 `NOTES.md` has the full list of differences, the memory map, the timing and everything found in the disassembly.
 
