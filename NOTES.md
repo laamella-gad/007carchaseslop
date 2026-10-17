@@ -188,6 +188,14 @@ cumulative, so the C code can take any time up to the original's. CIA 2 timer A 
 counts its underflows. After a wait for a key, `pace_restart()` starts from now; when the C code is more than
 2000 ticks (half a second) behind, the target catches up instead of rushing.
 
+The C code waits only before something that shows or sounds: a row, a print, a sprite, a sound. The time of
+lines that show nothing is added to the next wait, so what shows keeps the original's timing:
+`LINES(a, b)` waits for the lines from a to b of the listing (from `SUM_<line>`, the cycles of all lines up to
+it), `SPEND(a, b)` and `spend()` add their time without waiting. Lines that only test and jump are one wait,
+and so is the collision pass, whose tests all moved to the raster IRQ: it waits before the explosions, the
+helicopter's, the crash and the score. A section's end tests (`d=10`, lines 235-238 and the like) wait for all
+of their lines before testing, so leaving at the first test takes a line or two longer than in the original.
+
 Not measured, estimated: the pause delay (line 58, 1001 FOR loops at about 1350 cycles; not needed now, the
 pause goes on a key press) and line 13010 (the player to the left before the bonus, about 2750 cycles a step).
 
@@ -210,7 +218,8 @@ One file per part, each named after its BASIC lines in the comments:
 | `hiscore.c` | Top 10 | 20000-20110 |
 
 Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turns each run of
-them into a table of `{cells, helper calls, cycles}` (`rows_200` is lines 200-214) that `play_rows` plays back.
+them into a table of `{cells, tune, cycles}` (`rows_200` is lines 200-214) that `play_rows` plays back. The
+helper calls other than the tune (`sys49152`, `49155`, `49561`) are left out: what they did is in the raster IRQ.
 The other lines are written out in C, each followed by its `LINE(n)` pace.
 
 The tables' PRINTs are printed at build time: `bas2c.py` runs a copy of the printer on them and writes each

@@ -12,8 +12,7 @@ static void plan_clear(void)
 	for (char y = 20; y < 25; y++)
 		for (char x = 30; x < 40; x++)
 			screen[x + 40 * y] = ' ';
-	LINE(7400);
-	LINE(7401);
+	LINES(7400, 7401);
 }
 
 void plan_clear_colours(void)
@@ -70,13 +69,11 @@ void plan_new(void)
 	for (char n = 1; n <= 6; n++)
 	{
 		plan[n] = rnd(3) + 1;
-		LINE(7002);
-		LINE(7003);
+		LINES(7002, 7003);
 	}
 	plan[7] = 6;
 	plan_pos = 1;
 	print(t7004);
-	LINE(7004);
 
 	// the drawing starts at the bottom, going up, with the second section: the
 	// plan is one section ahead of the road
@@ -85,7 +82,7 @@ void plan_new(void)
 	// the middle of an instruction
 	int x = 30, y = 24;
 	char n = 1, direction = 1;
-	LINE(7005);
+	LINES(7004, 7005);
 	plan_clear();
 	for (char z1 = 30; z1 < 40; z1++)
 		for (char z2 = 20; z2 < 25; z2++)
@@ -95,7 +92,7 @@ void plan_new(void)
 	for (;;)
 	{
 		n++;
-		LINE(7015);
+		spend(CYCLES_7015);
 		if (plan[n] == 6)
 		{
 			LINE(7300);
@@ -104,20 +101,16 @@ void plan_new(void)
 
 		char i = 0;
 		while (road_tests[i] != plan_road)
-			pace(test_cycles[i++]);
-		pace(test_cycles[i]);
+			spend(test_cycles[i++]);
+		spend(test_cycles[i]);
 
 		char next = plan[n];
 		const Piece *pieces = straight;
 		switch (plan_road)
 		{
 		case ROAD_COUNTRY:
-			LINE(7040);
-			LINE(7041);
-			LINE(7042);
 			plan_road = next == 1 ? ROAD_TUNNEL : next == 2 ? ROAD_LEFT_CURVE : ROAD_BRIDGE;
-			LINE(7045);
-			LINE(7046);
+			LINES(7040, 7046);
 			break;
 		case ROAD_BRIDGE:
 			// the bridge is drawn as a piece of its own: the next section is
@@ -127,36 +120,24 @@ void plan_new(void)
 			LINE(7060);
 			break;
 		case ROAD_LEFT_CURVE:
-			LINE(7065);
-			LINE(7066);
-			LINE(7067);
 			plan_road = next == 2 ? ROAD_RIGHT_CURVE : ROAD_COUNTRY;
-			LINE(7075);
-			LINE(7076);
+			SPEND(7065, 7067);
+			LINES(7075, 7076);
 			pieces = turn_left;
 			break;
 		case ROAD_RIGHT_CURVE:
-			LINE(7085);
-			LINE(7086);
-			LINE(7087);
 			plan_road = next == 2 ? ROAD_LEFT_CURVE : ROAD_COUNTRY;
-			LINE(7095);
-			LINE(7096);
+			SPEND(7085, 7087);
+			LINES(7095, 7096);
 			pieces = turn_right;
 			break;
 		case ROAD_CITY:
-			LINE(7035);
-			LINE(7036);
 			plan_road = next == 2 ? ROAD_TUNNEL : ROAD_COUNTRY;
-			LINE(7037);
+			LINES(7035, 7037);
 			break;
 		case ROAD_TUNNEL:
-			LINE(7022);
-			LINE(7023);
-			LINE(7024);
 			plan_road = next == 1 ? ROAD_CITY : ROAD_COUNTRY;
-			LINE(7025);
-			LINE(7026);
+			LINES(7022, 7026);
 			break;
 		}
 
@@ -213,8 +194,7 @@ static void bonus_animation(void)
 	LINE(13011);
 
 	sound_siren_start();
-	LINE(13012);
-	LINE(13013);
+	LINES(13012, 13013);
 	// half the time of the original
 	sound_siren((unsigned)(CYCLES_13014 / FRAME_CYCLES / 2));
 	while (siren_on)
@@ -232,8 +212,7 @@ static void bonus_animation(void)
 	glide_wait(&vic.spr_pos[0].x, 80, 101, CYCLES_13022);
 	glide_wait(&vic.spr_pos[1].y, 200, 71, CYCLES_13029);
 	vic.spr_pos[1].x = 0;
-	LINE(13030);
-	LINE(13099);
+	LINES(13030, 13099);
 }
 
 void bonus(void)
@@ -255,8 +234,7 @@ void bonus(void)
 		print(t11);
 		print_number(score);
 		put(PET_RETURN);
-		LINE(7102);
-		LINE(7103);
+		LINES(7102, 7103);
 	}
 	LINE(7104);
 	plan_new();

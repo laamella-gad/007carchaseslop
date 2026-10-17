@@ -22,11 +22,13 @@ import sys
 
 PRINT, SYS, IF, THEN, REM, DATA = 0x99, 0x9e, 0x8b, 0xa7, 0x8f, 0x83
 
+# The helper's entry points a row line calls. Only tune_play is left to do: the
+# others are in the raster IRQ
 SYS_OPS = {
-    b"49152": "OP_TURBO",    # turbo_frame
-    b"49155": "OP_FRAME",    # frame_update
-    b"49561": "OP_WEAPON",   # weapon_update
-    b"51000": "OP_TUNE",     # tune_play
+    b"49152": None,     # turbo_frame
+    b"49155": None,     # frame_update
+    b"49561": None,     # weapon_update
+    b"51000": "tune",   # tune_play
 }
 
 
@@ -321,17 +323,14 @@ def main():
             c.write("static const char s%d[] = {%s};\n" % (num, ",".join("%d" % b for b in row)))
         c.write("const Row rows_%d[%d] = {\n" % (run[0][0], len(run)))
         for num, (ops, lit, newline) in run:
-            c.write("\t{s%d, %s, %d},\t// %d\n" % (num, " | ".join(ops) or "0",
-                                                 cycles.get(num, 0), num))
+            c.write("\t{s%d, %d, %d},\t// %d\n" % (num, "tune" in ops, cycles.get(num, 0), num))
         c.write("};\n\n")
 
     h.write("// Made by tools/bas2c.py from 007.bas and build/timing.txt: don't edit\n")
     h.write("#ifndef TEXT_H\n#define TEXT_H\n\n")
-    h.write("// What a row line does before its PRINT, in this order\n")
-    h.write("#define OP_TUNE\t\t1\t// sys51000\n#define OP_FRAME\t2\t// sys49155\n")
-    h.write("#define OP_TURBO\t4\t// sys49152\n#define OP_WEAPON\t8\t// sys49561\n\n")
-    h.write("// cells: what the PRINT writes, for print_cells\n")
-    h.write("typedef struct {\n\tconst char *cells;\n\tchar ops;\n\tunsigned long cycles;\n} Row;\n\n")
+    h.write("// cells: what the PRINT writes, for print_cells; tune: the line plays the\n")
+    h.write("// tune first (sys51000)\n")
+    h.write("typedef struct {\n\tconst char *cells;\n\tchar tune;\n\tunsigned long cycles;\n} Row;\n\n")
     for name, lit in arrays:
         h.write("extern const char %s[];\n" % name)
     h.write("\n")
@@ -342,6 +341,12 @@ def main():
     for num, body in lines:
         if body[:1] not in (bytes([REM]), bytes([DATA])) and used(num):
             h.write("#define CYCLES_%d\t%dul\n" % (num, cycles.get(num, 0)))
+    h.write("\n// The cycles of all lines up to each, for the time of a run of lines\n")
+    total = 0
+    for num, body in lines:
+        if body[:1] not in (bytes([REM]), bytes([DATA])) and used(num):
+            total += cycles.get(num, 0)
+            h.write("#define SUM_%d\t%dul\n" % (num, total))
     h.write('\n#pragma compile("text.c")\n\n#endif\n')
 
 

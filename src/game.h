@@ -7,6 +7,12 @@
 // The time of BASIC line n in the original
 #define LINE(n)     pace(CYCLES_##n)
 
+// The time of lines a to b, all the lines in between in the listing (each
+// pastes on its own: oscar64 can't paste in a macro inside a macro)
+#define TIME(a, b)  (SUM_##b - SUM_##a + CYCLES_##a)
+#define LINES(a, b) pace(SUM_##b - SUM_##a + CYCLES_##a)
+#define SPEND(a, b) spend(SUM_##b - SUM_##a + CYCLES_##a)
+
 extern long score;              // sc
 extern long bonus_points;       // bp: 1000 more for each bonus
 extern signed char lives;       // ch: -1 ends the game (no lives left, or F7)
@@ -17,8 +23,8 @@ extern unsigned distance;       // d: road drawn in this section
 extern char plan_pos;           // p: the section of the plan the road is in
 extern char plan[11];           // cr(1-7): 1-3 where the road goes next, 6 the bonus
 
-// Plays rows from to to-1 of a table from tools/bas2c.py: the helper calls of
-// each line, its PRINT, and the line's time
+// Plays rows from to to-1 of a table from tools/bas2c.py: the tune if the line
+// plays it, its PRINT, and the line's time
 void play_rows(const Row *rows, char from, char to);
 
 #pragma compile("game.c")

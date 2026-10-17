@@ -355,16 +355,8 @@ static unsigned ticks(void)
 static unsigned target;
 static char rest;
 
-void pace(unsigned long cycles)
+void spend(unsigned long cycles)
 {
-	// F5 pauses the game (keys_frame) at the next line, until F5 again
-	if (motion_hold)
-	{
-		while (motion_hold)
-			;
-		pace_restart();
-	}
-
 	cycles += rest;
 	rest = cycles & 255;
 	cycles >>= 8;
@@ -378,6 +370,19 @@ void pace(unsigned long cycles)
 			;
 	}
 	target += (unsigned)cycles;
+}
+
+void pace(unsigned long cycles)
+{
+	// F5 pauses the game (keys_frame) at the next line, until F5 again
+	if (motion_hold)
+	{
+		while (motion_hold)
+			;
+		pace_restart();
+	}
+
+	spend(cycles);
 
 	// far behind (half a second, on a slow line): don't rush to catch up
 	unsigned now = ticks();

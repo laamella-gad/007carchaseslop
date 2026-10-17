@@ -16,15 +16,8 @@ void play_rows(const Row *rows, char from, char to)
 	for (char i = from; i < to; i++)
 	{
 		const Row *r = rows + i;
-		char ops = r->ops;
-		if (ops & OP_TUNE)
+		if (r->tune)
 			music_on();
-		if (ops & OP_FRAME)
-			frame_update();
-		if (ops & OP_TURBO)
-			turbo_frame();
-		if (ops & OP_WEAPON)
-			weapon_update();
 		print_cells(r->cells);
 		pace(r->cycles);
 		// a crash goes on after the row it happens in, not at the next

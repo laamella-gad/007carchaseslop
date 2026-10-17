@@ -72,16 +72,6 @@ void glide(volatile char *reg, char to, unsigned speed);
 // A speed in 1/256 pixels a frame for px pixels in the given cycles
 #define PX_SPEED(px, cycles)    ((unsigned)((px) * 256ul * FRAME_CYCLES / (cycles)))
 
-// Where the original calls its helper: all it did is in the raster IRQ now.
-// sys49155: keys, cars, F1/F3, the car from behind, the helicopter, the weapon
-inline void frame_update(void) {}
-
-// sys49152: frame_update again when turbo is on
-inline void turbo_frame(void) {}
-
-// sys49561: the weapon, the headlights, the credit and the joystick
-inline void weapon_update(void) {}
-
 // From the raster IRQ, once a frame: F1, F3, F5 and F7, the cars, the player,
 // the helicopter and its bomb, the weapon, the crashes, the credit, the
 // helicopter's explosion flash, the title's logo and the bonus animation

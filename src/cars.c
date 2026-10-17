@@ -53,8 +53,7 @@ void spawn_car4(void)
 	car_boom[3] = 0;
 	sprite_pointers[4] = player_sprite;
 	vic.spr_color[4] = rnd(10);
-	LINE(105);
-	LINE(106);
+	LINES(105, 106);
 	car4_on(direction);
 }
 
@@ -96,8 +95,7 @@ void spawn_car4_bridge(void)
 	car_boom[3] = 0;
 	sprite_pointers[4] = player_sprite;
 	vic.spr_color[4] = rnd(10);
-	LINE(125);
-	LINE(126);
+	LINES(125, 126);
 	car4_on(direction);
 }
 
@@ -189,27 +187,7 @@ void car_explode(char car)
 	pace(hit_cycles[car - 1]);
 	sound_explosion();
 	score += (turbo + 1) * 50;
-	LINE(18);
-	LINE(19);
-}
-
-// Lines 20-35 (gosub20, 24, 28, 32): an enemy car level with the player
-static const unsigned long car_cycles[4][4] = {
-	{CYCLES_20, CYCLES_21, CYCLES_22, CYCLES_23},
-	{CYCLES_24, CYCLES_25, CYCLES_26, CYCLES_27},
-	{CYCLES_28, CYCLES_29, CYCLES_30, CYCLES_31},
-	{CYCLES_32, CYCLES_33, CYCLES_34, CYCLES_35},
-};
-
-// The guns and the smoke hit in the raster IRQ (weapon_hits), the crashes too
-// (crash_test); the time of the tests is kept
-static void car_check(char car)
-{
-	const unsigned long *c = car_cycles[car - 1];
-	pace(c[0]);
-	pace(c[1]);
-	pace(c[2]);
-	pace(c[3]);
+	LINES(18, 19);
 }
 
 // The cars the guns or the smoke hit since the last pass explode for points
@@ -223,40 +201,17 @@ static void shots(void)
 		}
 }
 
-// Lines 45-49: explosions off the road after one collision pass. The raster
-// IRQ takes them off after CAR_BOOM_FRAMES (booms_frame); the time of the
-// tests is kept
-static const unsigned long clear_cycles[4] = {CYCLES_45, CYCLES_46, CYCLES_47, CYCLES_48};
-
-static void explosions_end(void)
-{
-	for (char car = 1; car <= 4; car++)
-		pace(clear_cycles[car - 1]);
-	LINE(49);
-}
-
-// Lines 36-38: the helicopter's bomb. It hits in the raster IRQ (crash_test),
-// a landed bomb goes off the screen there too (heli_frame)
-static void bomb_check(void)
-{
-	LINE(36);
-	LINE(37);
-	LINE(38);
-}
-
 // Lines 51-57: F7, F5, and the missile hitting the helicopter. F5 pauses in
 // the raster IRQ (keys_frame, lines 58-60), F7 is read there too
 static void keys_and_helicopter(void)
 {
 	if (quit_request)
 		lives = -1;
-	LINE(51);
-	LINE(52);
+	SPEND(51, 53);
 
 	// The missile tests itself at each step (weapon_update); the original tests
 	// it here and the helicopter flashes too fast to see and flies on. Now
 	// the raster IRQ flashes it and it's gone until the next country road
-	LINE(53);
 	if (!heli_hit)
 	{
 		LINE(54);
@@ -269,31 +224,32 @@ static void keys_and_helicopter(void)
 	LINE(57);
 }
 
+// The tests of the pass show nothing now: the guns and the smoke hit in the
+// raster IRQ (weapon_hits), the crashes too (crash_test), and it takes the
+// explosions off (booms_frame). Their time goes before what shows next
 void collide(void)
 {
 	int x = vic.spr_pos[0].x;
 	int left = x - 18, right = x + 18;
 	char bomb_x = vic.spr_pos[6].x;
-	LINE(5);
 
-	explosions_end();
+	// line 5, then 45-49 (gosub45): explosions off the road
+	spend(CYCLES_5);
+	LINES(45, 49);
 	shots();
-	LINE(6);
 
-	// lines 6-9: each enemy car level with the player
-	static const unsigned long level_cycles[3] = {CYCLES_7, CYCLES_8, CYCLES_9};
+	// lines 6-10: each enemy car level with the player (gosub20, 24, 28, 32)
+	static const unsigned long car_cycles[4] = {TIME(20, 23), TIME(24, 27), TIME(28, 31), TIME(32, 35)};
 	for (char car = 1; car <= 4; car++)
 	{
 		int cx = vic.spr_pos[car].x;
 		if (cx > left && cx < right)
-			car_check(car);
-		if (car < 4)
-			pace(level_cycles[car - 1]);
+			spend(car_cycles[car - 1]);
 	}
-
-	LINE(10);
+	SPEND(6, 10);
+	// lines 36-38: the helicopter's bomb
 	if (bomb_x > 0)
-		bomb_check();
+		SPEND(36, 38);
 	crash_check();
 
 	keys_and_helicopter();

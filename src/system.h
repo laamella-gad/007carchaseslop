@@ -101,6 +101,10 @@ char rnd(char n);
 // work in between can take any time shorter than that
 void pace(unsigned long cycles);
 
+// Adds cycles to the time the next pace waits for, without waiting: for lines
+// that show nothing, so their time goes before the next thing that shows
+void spend(unsigned long cycles);
+
 // Starts pacing from now, after waiting for a key
 void pace_restart(void);
 

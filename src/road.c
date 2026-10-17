@@ -18,8 +18,8 @@ enum Next {
 	NEXT_GAME_OVER      // 39
 };
 
-// gosub5 at line n, then "if ch=-1 then 39"
-#define COLLIDE(n)  do { collide(); pace(CYCLES_##n); if (lives == -1) return NEXT_GAME_OVER; } while (0)
+// gosub5 in line a, then "if ch=-1 then 39", with the time up to line b
+#define COLLIDE(a, b)   do { collide(); pace(SUM_##b - SUM_##a + CYCLES_##a); if (lives == -1) return NEXT_GAME_OVER; } while (0)
 
 #define section_is(n)   (plan[plan_pos] == (n))
 
@@ -29,9 +29,8 @@ static void colours(char back)
 	vic.color_back = back;
 }
 
-// Lines 242-245 and the like: new enemy cars for the ones off the road. The
-// weapon moves between the third and the fourth
-static void spawn_cars(unsigned long c1, unsigned long c2, unsigned long c3, unsigned long c4, char weapon)
+// Lines 242-245 and the like: new enemy cars for the ones off the road
+static void spawn_cars(unsigned long c1, unsigned long c2, unsigned long c3, unsigned long c4)
 {
 	if (car_direction[0] == 0)
 		spawn_car(1);
@@ -39,8 +38,6 @@ static void spawn_cars(unsigned long c1, unsigned long c2, unsigned long c3, uns
 	if (car_direction[1] == 0)
 		spawn_car(2);
 	pace(c2);
-	if (weapon)
-		weapon_update();
 	if (car_direction[2] == 0)
 		spawn_car(3);
 	pace(c3);
@@ -76,42 +73,34 @@ static char country(char setup)
 		play_rows(rows_200, 0, 15);
 		// a sign before the bridge
 		music_on();
-		frame_update();
 		if (section_is(3))
 		{
 			print(t215);
 			put(PET_RETURN);
 		}
 		LINE(215);
-		turbo_frame();
 		if (section_is(3))
 		{
 			print(t216);
 			put(PET_RETURN);
 		}
 		LINE(216);
-		weapon_update();
-		COLLIDE(217);
+		COLLIDE(217, 217);
 
 		play_rows(rows_220, 0, 15);
-		weapon_update();
 		// line 235 also tests cr, not cr(p): never 1
 		distance++;
-		LINE(235);
-		LINE(236);
+		LINES(235, 238);
 		if (distance == 10 && section_is(1))
 		{
 			distance = 0;
 			return NEXT_TUNNEL;
 		}
-		LINE(237);
 		if (distance == 10 && section_is(2))
 		{
 			distance = 0;
 			return NEXT_LEFT_CURVE;
 		}
-		weapon_update();
-		LINE(238);
 		if (distance == 10 && section_is(3))
 		{
 			distance = 0;
@@ -124,7 +113,6 @@ static char country(char setup)
 		}
 		LINE(239);
 		music_on();
-		frame_update();
 		if (section_is(3))
 		{
 			print(t216);
@@ -134,11 +122,9 @@ static char country(char setup)
 		if (section_is(6))
 			bonus();
 		LINE(241);
-		spawn_cars(CYCLES_242, CYCLES_243, CYCLES_244, CYCLES_245, 1);
+		spawn_cars(CYCLES_242, CYCLES_243, CYCLES_244, CYCLES_245);
 		helicopter_bomb(140, CYCLES_246);
-		weapon_update();
-		COLLIDE(250);
-		LINE(251);
+		COLLIDE(250, 251);
 	}
 }
 
@@ -167,17 +153,15 @@ static char city(void)
 		print(t400);
 		LINE(400);
 		play_rows(rows_401, 0, 6);
-		COLLIDE(407);
+		COLLIDE(407, 407);
 
-		weapon_update();
 		put(c2);
 		put(PET_RETURN);
 		music_on();
 		LINE(419);
 		play_rows(rows_420, 0, 15);
-		COLLIDE(449);
+		COLLIDE(449, 449);
 
-		frame_update();
 		put(c3);
 		put(PET_RETURN);
 		print(t450);
@@ -189,79 +173,58 @@ static char city(void)
 			put(PET_RETURN);
 		}
 		LINE(472);
-		weapon_update();
 		if (lights == -1)
 		{
 			print(t473);
 			put(PET_RETURN);
 		}
 		LINE(473);
-		COLLIDE(480);
+		COLLIDE(480, 480);
 
 		if (section_is(6))
 			bonus();
-		LINE(485);
-		weapon_update();
-		LINE(486);
+		LINES(485, 489);
 		if (distance == 10 && section_is(3))
 		{
 			distance = 0;
 			return NEXT_COUNTRY;
 		}
 		lights = -lights;
-		LINE(487);
 		distance++;
-		LINE(488);
 		if (distance == 10 && section_is(1))
 		{
 			distance = 0;
 			return NEXT_COUNTRY;
 		}
-		LINE(489);
 		if (distance == 10 && section_is(2))
 		{
 			distance = 0;
 			return NEXT_TUNNEL;
 		}
-		if (car_direction[0] == 0)
-			spawn_car(1);
-		LINE(490);
-		weapon_update();
-		if (car_direction[1] == 0)
-			spawn_car(2);
-		LINE(491);
-		if (car_direction[2] == 0)
-			spawn_car(3);
-		LINE(492);
-		if (car_direction[3] == 0)
-			spawn_car4();
-		LINE(493);
+		spawn_cars(CYCLES_490, CYCLES_491, CYCLES_492, CYCLES_493);
 		helicopter_bomb(140, CYCLES_494);
 
-		weapon_update();
-		LINE(497);
+		// lines 497-499: the colours turn
 		if (c1 == 155)
 		{
 			c1 = 28;
 			c2 = 155;
 			c3 = 149;
+			LINE(497);
+		}
+		else if (c1 == 149)
+		{
+			c1 = 155;
+			c2 = 149;
+			c3 = 28;
+			LINES(497, 498);
 		}
 		else
 		{
-			LINE(498);
-			if (c1 == 149)
-			{
-				c1 = 155;
-				c2 = 149;
-				c3 = 28;
-			}
-			else
-			{
-				LINE(499);
-				c1 = 149;
-				c2 = 28;
-				c3 = 155;
-			}
+			c1 = 149;
+			c2 = 28;
+			c3 = 155;
+			LINES(497, 499);
 		}
 	}
 }
@@ -271,14 +234,11 @@ static char tunnel(void)
 {
 	// into the tunnel
 	play_rows(rows_500, 0, 5);
-	frame_update();
 	LINE(507);
 	play_rows(rows_510, 0, 7);
 	music_on();
-	frame_update();
 	LINE(518);
 	play_rows(rows_520, 0, 9);
-	frame_update();
 	LINE(529);
 
 	// the helicopter's sprite is the headlights now (it stops first, so the IRQ
@@ -291,53 +251,39 @@ static char tunnel(void)
 	vic.spr_color[5] = YELLOW;
 	LINE(780);
 	colours(BLACK);
-	LINE(790);
 	plan_pos++;
-	LINE(793);
+	LINES(790, 793);
 	play_rows(rows_794, 0, 20);
 
 	for (;;)
 	{
-		weapon_update();
 		music_on();
 		sprite_pointers[5] = SPR_HEADLIGHTS;
 		LINE(815);
-		COLLIDE(819);
+		COLLIDE(819, 819);
 		play_rows(rows_820, 0, 15);
 
-		weapon_update();
 		distance++;
-		LINE(835);
+		LINES(835, 837);
 		if (distance == 10 && section_is(1))
 		{
 			distance = 0;
 			return NEXT_CITY;
 		}
-		LINE(836);
-		if (distance == 10 && section_is(2))
+		if (distance == 10 && (section_is(2) || section_is(3)))
 		{
 			distance = 0;
 			return NEXT_COUNTRY;
 		}
-		LINE(837);
-		if (distance == 10 && section_is(3))
-		{
-			distance = 0;
-			return NEXT_COUNTRY;
-		}
-		weapon_update();
 		if (section_is(6))
 			bonus();
-		LINE(838);
 		music_on();
 		sprite_pointers[5] = SPR_HEADLIGHTS;
-		LINE(840);
-		frame_update();
-		spawn_cars(CYCLES_842, CYCLES_843, CYCLES_844, CYCLES_845, 1);
+		LINES(838, 840);
+		spawn_cars(CYCLES_842, CYCLES_843, CYCLES_844, CYCLES_845);
 		vic.spr_pos[5].x = vic.spr_pos[0].x;
 		LINE(846);
-		COLLIDE(847);
-		LINE(850);
+		COLLIDE(847, 850);
 		// goto800: the tunnel without its first rows
 		play_rows(rows_794, 5, 20);
 	}
@@ -355,15 +301,13 @@ static void curve_init(void)
 		for (char j = 0; j < 40; j++)
 			curve[i][j] = s[j];
 		curve[i][40] = 0;
-		pace(i == 0 ? CYCLES_140 : i == 1 ? CYCLES_141 : CYCLES_142);
 	}
-	LINE(144);
+	LINES(140, 144);
 }
 
 // gosub150: the rows 2 characters right
 static void curve_scroll(void)
 {
-	static const unsigned long cycles[3] = {CYCLES_150, CYCLES_151, CYCLES_152};
 	for (char i = 0; i < 3; i++)
 	{
 		char *s = curve[i];
@@ -372,14 +316,13 @@ static void curve_scroll(void)
 			s[j] = s[j - 2];
 		s[0] = a;
 		s[1] = b;
-		pace(cycles[i]);
 	}
+	LINES(150, 152);
 	print(t148);
 	for (char i = 0; i < 3; i++)
 		print(curve[i]);
 	put(PET_RETURN);
-	LINE(153);
-	LINE(154);
+	LINES(153, 154);
 }
 
 // The player is carried out of the curve (lines 1026, 1049, 1126 and 1156) in
@@ -400,27 +343,22 @@ static char left_curve(void)
 	{
 		play_rows(rows_1010, 0, 15);
 		music_on();
-		LINE(1025);
-		LINE(1026);
-		weapon_update();
-		COLLIDE(1027);
+		LINES(1025, 1026);
+		COLLIDE(1027, 1027);
 
 		play_rows(rows_1030, 0, 15);
-		turbo_frame();
 		distance++;
-		LINE(1045);
+		LINES(1045, 1047);
 		if (distance == 3 && section_is(1))
 		{
 			distance = 0;
 			return NEXT_COUNTRY_ROAD;
 		}
-		LINE(1046);
 		if (distance == 3 && section_is(2))
 		{
 			distance = 0;
 			return NEXT_RIGHT_CURVE;
 		}
-		LINE(1047);
 		if (distance == 3 && section_is(3))
 		{
 			distance = 0;
@@ -428,18 +366,14 @@ static char left_curve(void)
 		}
 		if (section_is(6))
 			bonus();
-		LINE(1048);
-		weapon_update();
-		LINE(1049);
+		LINES(1048, 1049);
 		if (section_is(6))
 			bonus();
 		LINE(1050);
-		frame_update();
-		spawn_cars(CYCLES_1051, CYCLES_1052, CYCLES_1053, CYCLES_1054, 1);
+		spawn_cars(CYCLES_1051, CYCLES_1052, CYCLES_1053, CYCLES_1054);
 		music_on();
 		helicopter_bomb(140, CYCLES_1055);
-		COLLIDE(1056);
-		LINE(1060);
+		COLLIDE(1056, 1060);
 	}
 }
 
@@ -458,25 +392,22 @@ static char right_curve(void)
 	{
 		play_rows(rows_1110, 0, 15);
 		music_on();
-		LINE(1125);
-		LINE(1126);
-		COLLIDE(1127);
+		LINES(1125, 1126);
+		COLLIDE(1127, 1127);
 
 		play_rows(rows_1130, 0, 15);
 		distance++;
-		LINE(1145);
+		LINES(1145, 1147);
 		if (distance == 3 && section_is(1))
 		{
 			distance = 0;
 			return NEXT_COUNTRY_ROAD;
 		}
-		LINE(1146);
 		if (distance == 3 && section_is(2))
 		{
 			distance = 0;
 			return NEXT_LEFT_CURVE;
 		}
-		LINE(1147);
 		if (distance == 3 && section_is(3))
 		{
 			distance = 0;
@@ -490,13 +421,10 @@ static char right_curve(void)
 		if (section_is(6))
 			bonus();
 		LINE(1150);
-		frame_update();
-		spawn_cars(CYCLES_1151, CYCLES_1152, CYCLES_1153, CYCLES_1154, 0);
+		spawn_cars(CYCLES_1151, CYCLES_1152, CYCLES_1153, CYCLES_1154);
 		music_on();
-		helicopter_bomb(140, CYCLES_1155);
-		LINE(1156);
-		COLLIDE(1157);
-		LINE(1160);
+		helicopter_bomb(140, TIME(1155, 1156));
+		COLLIDE(1157, 1160);
 	}
 }
 
@@ -535,7 +463,6 @@ static char bridge(void)
 	for (;;)
 	{
 		play_rows(rows_2200, 0, 15);
-		weapon_update();
 		collide();
 		music_on();
 		LINE(2215);
@@ -549,7 +476,7 @@ static char bridge(void)
 
 		play_rows(rows_2220, 0, 15);
 		distance++;
-		LINE(2235);
+		LINES(2235, 2239);
 		if (distance == 30)
 		{
 			distance = 0;
@@ -557,14 +484,12 @@ static char bridge(void)
 			return NEXT_COUNTRY;
 		}
 		music_on();
-		LINE(2239);
 		water();
 		LINE(2240);
 		// car 1 doesn't come back on the bridge
 		if (car_direction[1] == 0)
 			spawn_car_bridge(2);
 		LINE(2243);
-		weapon_update();
 		if (car_direction[2] == 0)
 			spawn_car_bridge(3);
 		LINE(2244);
@@ -572,9 +497,7 @@ static char bridge(void)
 			spawn_car4_bridge();
 		LINE(2245);
 		helicopter_bomb(180, CYCLES_2246);
-		weapon_update();
-		COLLIDE(2247);
-		LINE(2250);
+		COLLIDE(2247, 2250);
 	}
 }
 
@@ -590,9 +513,8 @@ static void start(void)
 	print(t94);
 	print_number(lives);
 	put(PET_RETURN);
-	LINE(94);
+	LINES(94, 95);
 
-	LINE(95);
 	for (char n = 1; n <= 6; n++)
 	{
 		LINE(96);
