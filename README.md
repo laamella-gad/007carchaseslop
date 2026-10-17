@@ -17,9 +17,12 @@ The original is a BASIC V2 program that does most of the work, from the road to 
 has a small machine code helper at $c000 for the sprites, the keys and the sound. Because BASIC is slow, the
 whole game runs at the speed of the interpreter.
 
-The rewrite plays at that same speed. `tools/c64time.c` is a small C64 emulator that ran the original from a
-snapshot for 20000 emulated seconds and timed every BASIC line in PAL cycles. The C version waits on a CIA timer
-after each part until the original would have finished that line.
+A small C64 emulator (`tools/c64time.c`, now only in the git history) ran the original from a snapshot for
+20000 emulated seconds and timed every BASIC line in PAL cycles. The title, the instructions, the bonus, the
+track plan and the high scores keep those times. The road doesn't: it scrolls a row every frame, where the
+original stalls for about a quarter of a second at every collision check, so the game is faster and harder.
+The cars, the player, the weapons and the sounds move every frame in a raster interrupt, smoothly, where the
+original moves them in jumps whenever BASIC gets round to it.
 
 ## Changes
 
@@ -34,17 +37,30 @@ Bugs fixed from the original:
   drive off the road, and the next move stops the game with `?ILLEGAL QUANTITY ERROR`.
 - Smoke from the `,` key stays while the key is held, as it does with the joystick. In the original it shows for
   a single frame.
+- The city and the tunnel no longer erase the panel with the score and the track plan.
+- The tunnel's left walls stay yellow; in the original one row turns white after each collision check.
+- The missile can hit the helicopter. The original checks so rarely that it almost never does.
+- Crashes go by the cars' visible pixels. The original's box is larger than the cars, and the bomb's is off to
+  the left, so a bomb beside the car hits and one on its right half misses.
+
+Gameplay changes:
+
+- The road sections are 1.5 times as long.
+- The joystick steers and fires at the same time, and diagonals work. The original only takes one direction or
+  fire at a time.
+- The name for the high score table can be typed right away, while the tune plays; the original makes you wait
+  for the whole tune.
+- F5 pauses at once and F5 again goes on; F7 is never missed. No "wait for data transfer" at the start.
 
 `NOTES.md` has the full list of differences, the memory map, the timing and everything found in the disassembly.
 
 ## Building
 
-Needs oscar64, pucrunch, python3 and a C compiler; VICE to play.
+Needs oscar64, pucrunch and python3; VICE to play.
 
 ```sh
 make            # 007carchase.prg
 make run        # starts it in VICE
-make timing     # times the original again (takes minutes), then `make text` for src/text.c
 ```
 
 `deflower --verify 007.flo` rebuilds the disassembly in `out/` with Deflower.

@@ -17,8 +17,6 @@ $C000 (`007`). Disk image `007CARCH.d64`. `007.prg`, `code.asm`, `1.bin`, `2.bin
 ```sh
 make                         # src/ -> build/007carchase_raw.prg -> crunched 007carchase.prg
 make run                     # VICE
-make timing                  # tools/c64time.c times the original's BASIC lines -> build/timing.txt (minutes)
-make text                    # tools/bas2c.py: 007.bas + timing -> src/text.c, src/text.h (generated, don't edit)
 deflower --verify 007.flo    # disassembly -> out/007.asm and the .bin exports (must stay 0 differ, 0 gaps)
 petcat -2 -- 007.bas         # BASIC listing
 ```
@@ -37,9 +35,9 @@ original, with comments naming the BASIC lines they port:
 - `helper.c` is the $C000 machine code (keys, joystick, sprite moves, weapon). `system.c` has the PETSCII
   printer that mimics the KERNAL, keys, INPUT and pacing. `sound.c` has the sounds.
 - `game.c` holds the shared BASIC variables and `play_rows`. Most road lines only PRINT and SYS, and
-  `bas2c.py` turns runs of them into `rows_N` tables of `{cells, tune}` that `play_rows` replays.
-  The tables are rendered at build time to screen/colour spans that `print_cells` copies to video memory;
-  a table that prints before homing the cursor needs its entry in `ENTRY` in `bas2c.py`.
+  `src/text.c` holds them as `rows_N` tables of `{cells, tune}` that `play_rows` replays: screen/colour
+  spans that `print_cells` copies to video memory. `text.c`/`text.h` were made once from `007.bas` and a timing
+  run (tools deleted, in git history up to eb9235c) and are now edited by hand.
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
   `hiscore.c`.
 

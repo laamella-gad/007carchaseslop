@@ -1,4 +1,5 @@
-// Made by tools/bas2c.py from 007.bas and build/timing.txt: don't edit
+// Made by tools/bas2c.py (deleted, in the git history) from 007.bas and the
+// timing run; edited by hand now
 #include "text.h"
 
 const char t0[] = {48,48,55,0};

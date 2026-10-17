@@ -20,9 +20,8 @@ helper at $c000.
 | `out/tune_notes.bin` | The title tune's note table ($c800-$c8e3) |
 | `out/007bas.prg` | The BASIC program, the same as `007.bas` |
 | `007.prg`, `code.asm`, `1.bin`, `2.bin` | An older attempt: a WFDis paste that doesn't assemble, and a PRG with the sprite data one byte off. Not used (its Makefile was replaced by the rewrite's) |
-| `src/` | The C rewrite for oscar64; `src/text.c` and `src/text.h` are made by `tools/bas2c.py` |
-| `tools/c64time.c` | A 6502/C64 emulator that runs the BASIC game from `007.vsf` with random keys and times each line |
-| `tools/bas2c.py` | Makes the strings, row tables and line times for the rewrite from `007.bas` and `build/timing.txt` |
+| `src/` | The C rewrite for oscar64; `src/text.c` and `src/text.h` were made by `bas2c.py` (see Timing), now edited by hand |
+| `tools/branchcheck.py` | Checks the oscar64 listing for branches into the middle of an instruction (`make` runs it) |
 | `007carchase.prg` | The rewrite, crunched (`make`) |
 
 ## Loading
@@ -168,21 +167,23 @@ the helicopter 5, the slower car directions 2 or 3.
 The game has no frame sync: it runs as fast as BASIC goes, one `sys` of the helper between PRINTs. So the
 rewrite takes its time from the original, line by line.
 
-`tools/c64time.c` (`make timing`, about 3.5 minutes) loads `007.vsf` with the ROMs and emulates the CPU, the
-KERNAL's 60 Hz IRQ and the keyboard. It holds a random key (M, Z, space, '.', ',' or none) for 400000 cycles at
-a time and puts a key in the buffer where the game waits for one (space or 'I' at the title), for 20000
-emulated seconds, without the joystick and writes `build/timing.txt`: per BASIC line
+The road no longer uses these times; the rest of the game does. They were measured once with `tools/c64time.c`
+and turned into `src/text.c`/`text.h` with `tools/bas2c.py`; both are deleted now and are in the git history up
+to commit eb9235c. `c64time.c` (about 3.5 minutes) loaded `007.vsf` with the ROMs and emulated the CPU, the
+KERNAL's 60 Hz IRQ and the keyboard. It held a random key (M, Z, space, '.', ',' or none) for 400000 cycles at
+a time and put a key in the buffer where the game waits for one (space or 'I' at the title), for 20000
+emulated seconds, without the joystick, and wrote `build/timing.txt`: per BASIC line
 (CURLIN, $39/$3a) the number of passes and the average, minimum and maximum PAL cycles per pass, without the
 time spent in the subroutines it calls (a line left with GOSUB, whose token $8d is on the stack, doesn't end a
-pass). It restarts from the snapshot when the game stops: at READY after an error ($a474) and at the `end` in
-line 20049. It also prints into a shadow of the screen with a simple PETSCII printer and compares it to the
+pass). It restarted from the snapshot when the game stops: at READY after an error ($a474) and at the `end` in
+line 20049. It also printed into a shadow of the screen with a simple PETSCII printer and compared it to the
 real screen, which shows that the rewrite's printer (no logical lines) draws what the KERNAL draws.
 
 A pass is from entering a line to leaving it, so a line that loops on itself (11070, a FOR loop in one line)
 counts the whole loop as one pass. Those are divided by the number of loops in the rewrite: 11070 by the
 title_scroll calls per wait (669 in 178 waits), 20058 by 77, the bonus lines 13012-13029 by their FOR counts.
 
-`tools/bas2c.py` (`make text`) writes `CYCLES_<line>` for every line (0 for the lines the run never reached).
+`bas2c.py` wrote `CYCLES_<line>` for every line (0 for the lines the run never reached).
 `pace(CYCLES_n)` in the C code waits until that much time has passed since the last pace: the target is
 cumulative, so the C code can take any time up to the original's. CIA 2 timer A counts 256 cycles, timer B
 counts its underflows. After a wait for a key, `pace_restart()` starts from now; when the C code is more than
@@ -219,19 +220,19 @@ One file per part, each named after its BASIC lines in the comments:
 | `title.c` | Title and instructions | 11000-12420 |
 | `hiscore.c` | Top 10 | 20000-20110 |
 
-Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turns each run of
+Most of the road is lines that only `sys` into the helper and PRINT a string; `bas2c.py` turned each run of
 them into a table of `{cells, tune}` (`rows_200` is lines 200-214) that `play_rows` plays back. The
 helper calls other than the tune (`sys49152`, `49155`, `49561`) are left out: what they did is in the raster IRQ.
 The other lines are written out in C; outside the road each is followed by its `LINE(n)` pace.
 
-The tables' PRINTs are printed at build time: `bas2c.py` runs a copy of the printer on them and writes each
+The tables' PRINTs were printed ahead: `bas2c.py` ran a copy of the printer on them and wrote each
 row as the spans of screen codes and colours it leaves (`s200`; a `{clr}` is a clear), then the cursor, colour
 and reverse after it. `play_rows` copies them into video memory (`print_cells`), so the tables' PETSCII strings
 are left out. A colour or reverse a table uses before it sets one is the printer's at run time: the city's
 houses take the colour line 400/419/450 printed, and the tunnel's line 800 the colour of the score after a
 collision pass on `goto800` (the table is rendered from row 5 on as if played from there). Where the cursor is
 must be known: the tables that print before homing it (391, 401, 451, 12020, 12101, 12112) start where the
-PRINTs before them leave it, which `bas2c.py` prints too (`ENTRY`). A row that would scroll stops the build.
+PRINTs before them leave it, which `bas2c.py` printed too (`ENTRY`), and it refused a row that would scroll.
 
 Memory: VIC bank 0 as in the original (screen $0400, ROM character set). The sprites are blocks 40-59 at
 $0a00-$0eff: 40-54 where the original has them, and its blocks 13-15 and 33-34 (at $0340 and $0840) moved to
@@ -250,9 +251,9 @@ Differences from the original:
 - ?ILLEGAL QUANTITY: the crash slide (6000/6001) and the bonus (13010) stop x at 0 instead of stopping the
   program. The left curve's `-20` (1026, 1049) goes to 80 as the line meant.
 - Phase 4 fixes:
-  - The city and tunnel `{clr}` clear rows 0-19 only (`PANEL_KEPT` in `bas2c.py`), so the panel and plan stay.
+  - The city and tunnel `{clr}` clear rows 0-19 only (`PANEL_KEPT` in `bas2c.py`: the 0xfd clear in `s381`, `s794`), so the panel and plan stay.
     In the tunnel the plan and the TRACK/PLAN labels are black on black, as they would be in the original.
-  - The tunnel's left walls on row 5 are yellow like the rest (`INK_AT` in `bas2c.py`). Lines 800 and 820 print
+  - The tunnel's left walls on row 5 are yellow like the rest (`INK_AT` in `bas2c.py`: yellow in `s800`, `s820`). Lines 800 and 820 print
     them before their `{yel}`, so in the original they take the score's white after each collision pass.
   - The tune plays its 76 notes from note 0, without the two notes from past the table.
   - High scores: a new score goes below the scores it doesn't beat, so a tie is entered too instead of `end`;

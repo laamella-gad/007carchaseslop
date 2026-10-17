@@ -66,7 +66,7 @@ void system_init(void);
 
 // Prints PETSCII like the KERNAL: colour codes, reverse, cursor moves, home, clear,
 // return, and scrolling when the cursor goes past the bottom right. No logical
-// lines (tools/c64time.c checks that it draws what the KERNAL draws in this game)
+// lines (the timing emulator, tools/c64time.c in the git history, checked that it draws what the KERNAL draws in this game)
 void put(char c);
 void print(const char *s);
 
@@ -81,7 +81,7 @@ void print_comma(void);
 void print_save(void);
 void print_restore(void);
 
-// A PRINT rendered by tools/bas2c.py, written straight to the screen and colour
+// A PRINT rendered ahead (src/text.c), written straight to the screen and colour
 // RAM: spans of cells, then the cursor, colour and reverse after the PRINT
 void print_cells(const char *cells);
 
@@ -97,7 +97,7 @@ void input_line(char *s, char max);
 char rnd(char n);
 
 // The original's speed: pace(c) waits until c cycles have passed since the last
-// pace. The time comes from the measured BASIC lines (tools/c64time.c), so the
+// pace. The time comes from the measured BASIC lines (src/text.h), so the
 // work in between can take any time shorter than that
 void pace(unsigned long cycles);
 
