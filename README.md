@@ -43,6 +43,8 @@ Bugs fixed from the original:
 - The city and the tunnel no longer erase the panel with the score and the track plan.
 - The tunnel's left walls stay yellow; in the original one row turns white after each collision check.
 - The missile can hit the helicopter. The original checks so rarely that it almost never does.
+- Each run starts a different game. The original never seeds its random numbers, so the first game after
+  loading is always the same.
 - Crashes go by the cars' visible pixels. The original's box is larger than the cars, and the bomb's is off to
   the left, so a bomb beside the car hits and one on its right half misses.
 
@@ -59,7 +61,7 @@ Gameplay changes:
 
 ## Building
 
-Needs oscar64, pucrunch and python3; VICE to play.
+Needs oscar64 1.32.273 at commit fbca293 or later and pucrunch; VICE to play.
 
 ```sh
 make            # 007carchase.prg

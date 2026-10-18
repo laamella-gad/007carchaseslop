@@ -25,7 +25,7 @@ speed, with its bugs fixed.
 | File | What |
 |---|---|
 | `main.c` | Memory layout, setup, the main loop |
-| `system.c` | Screen writes, keys, the name input, `rnd` |
+| `system.c` | Screen writes, keys, the name input, `rnd` and its seed |
 | `frame.c` | What moves in the raster IRQ: the cars, the player, the helicopter, the weapon, the crash, the keys |
 | `sound.c` | The raster IRQ, the explosion, the tune, the crash noise and the siren |
 | `text.c` | The pictures of the road and the screens |
@@ -65,11 +65,7 @@ which turns each pass. Everything else is written to a row and column (`text_at`
 Memory: VIC bank 0 (screen $0400, ROM character set). The sprites are blocks 40-59 at $0a00-$0eff, code and
 data from $0f00 to $a000.
 
-Compiler bug: oscar64 1.32.271 at `-O2` turned the sign extension `AND #$80 / BPL +2 / LDA #$ff / STA` into
-`TYA` (Y was $ff) after placing the branch, so the `BPL` landed in the middle of the `STA`. That was in
-`plan_new` with `signed char x, y`, and still happens with oscar64 at commit 2357b11 (October 2026); fixed in
-commit a92fd0c ("Fix size reduction breaking branch offset"). When a plan was drawn, the game ran into garbage
-and ended at READY.
+Compiler: oscar64 1.32.273 at commit fbca293 or later, `-n -O2`.
 
 ## The original
 
@@ -104,6 +100,7 @@ Bugs and oddities:
   through the player between two, and the shorter gun fire mostly misses.
 - The bridge's edge is tested twice a pass of the bridge, so a player could get across between two.
 - F5 and F7 are read once a collision pass, so a short press is missed.
+- `RND(1)` is never seeded, so the first game after loading is always the same.
 
 ## Differences from the original
 

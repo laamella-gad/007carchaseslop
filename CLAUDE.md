@@ -44,9 +44,6 @@ Memory: VIC bank 0 (screen $0400, ROM charset). Sprites are blocks 40-59 at $0a0
 (their own section, `#embed` of the `.bin` files from Deflower's exports), code and data from $0f00 to $a000.
 
 oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs parentheses, `#embed` emits its
-own trailing comma, token pasting inside a nested macro call fails, and a function can keep a static global in a
-register across calls that change it (oscar64 issue #424, fixed in 44604ee): keep such state locally. An inlined function that
-calls one with stack arguments got a stack frame at each call site that didn't balance with the caller's, so
-the software stack crept up each game (oscar64 issue #426, fixed in fbca293).
-A count-down loop (`while (n--)`) with a constant start loses its exit test, and the code after it is
-dropped (oscar64 issue #425, fixed in cf1b548).
+own trailing comma, and token pasting inside a nested macro call fails.
+
+Needs oscar64 at commit fbca293 or later.
