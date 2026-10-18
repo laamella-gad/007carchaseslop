@@ -18,7 +18,7 @@ open it in VICE. Press `I` on the title screen for the instructions.
 [A gameplay video.](https://www.youtube.com/watch?v=9VdxBlnnm0g)
 
 The author clearly set high goals for this game - it is a 3D Spy Hunter clone with various enemies and locations.
-The goals are much too high for a game written in BASIC, and it wobbled along in a humorous way.
+The goals are much too high for a game written in BASIC, and it wobbles along in a humorous way.
 
 The most interesting technical thing going on in this game is how it manages to draw a 3D road that has a somewhat convincing movement feeling.
 It does this by running a few ticks of the main game loop, then updating one horizontal line of the road with a PRINT, and then the whole thing again but one line higher.

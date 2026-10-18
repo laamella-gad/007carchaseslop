@@ -9,14 +9,11 @@ speed, with its bugs fixed.
 
 | File | What |
 |---|---|
-| `007CARCH.d64` | The original disk: a loader, the game program and its machine code ($c000-$cfff) |
-| `007.bas`, `07.bas` | The original program as loaded at $1001, and its listing |
-| `007` | The original's machine code as on the disk, load address $c000 |
 | `007.vsf` | VICE snapshot taken during a game, the input for Deflower |
 | `007.flo` | Deflower annotations: `deflower --verify 007.flo` writes `out/007.asm` (0 differ, 0 gaps) and the exports below |
 | `out/sprites_40_54.bin`, `out/sprites_13_15.bin`, `out/sprites_33_34.bin` | The sprites |
 | `out/tune_notes.bin` | The tune's note table |
-| `007.prg`, `code.asm`, `1.bin`, `2.bin` | An older attempt, not used |
+| `out/007bas.prg` | The original's BASIC program as loaded at $1001 (`petcat -2 -- out/007bas.prg` lists it) |
 | `src/` | The rewrite |
 | `007carchase.prg` | The rewrite, crunched (`make`) |
 

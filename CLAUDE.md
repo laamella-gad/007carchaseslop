@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 oscar64 that plays at the original's speed, plus fixes. `NOTES.md` is the reference: the rewrite's structure,
 timing, the original's bugs, and **every difference from the original**. Keep it up to date with each change.
 
-The original is a BASIC V2 program (`007.bas`, listing `07.bas`, grep that) driving a machine code helper at
-$C000 (`007`). Disk image `007CARCH.d64`. `007.prg`, `code.asm`, `1.bin`, `2.bin` are an older unused attempt.
+The original is a BASIC V2 program (`out/007bas.prg`, list it with petcat and grep that) driving a machine code
+helper at $C000 (disassembled in `out/007.asm`). Both come from the snapshot `007.vsf` by way of `007.flo`.
 
 ## Commands
 
@@ -17,7 +17,7 @@ $C000 (`007`). Disk image `007CARCH.d64`. `007.prg`, `code.asm`, `1.bin`, `2.bin
 make                         # src/ -> build/007carchase_raw.prg -> crunched 007carchase.prg
 make run                     # VICE
 deflower --verify 007.flo    # disassembly -> out/007.asm and the .bin exports (must stay 0 differ, 0 gaps)
-petcat -2 -- 007.bas         # BASIC listing
+petcat -2 -- out/007bas.prg  # BASIC listing
 ```
 
 No tests. The user plays and tests in VICE; build only, and don't drive VICE from scripts.
@@ -33,7 +33,7 @@ go in `NOTES.md`.
 - `game.c` holds the shared variables and `play_rows`. `src/text.c` holds the road and the screens as
   pictures (`country_a`, `title_page`...): a line of characters per screen row, with stand-ins for the
   graphics, and colour runs (format and stand-ins in `text.h`). `play_rows` draws a line a frame, `show_rows`
-  all at once. Made once from `007.bas` (tools deleted, in git history up to eb9235c), edited by hand.
+  all at once. Made once from the BASIC program (tools deleted, in git history up to eb9235c), edited by hand.
 - `road.c` (sections), `cars.c` (spawns, collisions, crash), `plan.c` (track plan, bonus), `title.c`,
   `hiscore.c`. The plan is the list of sections the road goes through (`plan[]`); `game()` runs them in turn.
 
