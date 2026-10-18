@@ -53,4 +53,4 @@ register across calls that change it (oscar64 issue #424, fixed in 44604ee): kee
 calls one with stack arguments got a stack frame at each call site that didn't balance with the caller's, so
 the software stack crept up each game: `play_rows` is a macro for that.
 A count-down loop (`while (n--)`) with a constant start loses its exit test, and the code after it is
-dropped (oscar64 issue #425, fixed in cf1b548): count up.
+dropped (oscar64 issue #425, fixed in cf1b548).

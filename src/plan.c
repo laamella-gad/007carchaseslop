@@ -89,11 +89,8 @@ void plan_new(char from)
 			colour_ram[x + 40 * y] = BLACK;
 		}
 
-	// drawn from the bottom, going up, a piece for each section but the last.
-	// int, not signed char: oscar64 1.32.271 (-O2) shortens the sign extension
-	// of a signed char to int after placing its branch, which then jumps into
-	// the middle of an instruction
-	int x = 30, y = 24;
+	// drawn from the bottom, going up, a piece for each section but the last
+	signed char x = 30, y = 24;
 	char direction = UP;
 
 	for (char i = 0; i + 1 < plan_length; i++)
@@ -131,11 +128,10 @@ static void glide_wait(volatile char *reg, char to)
 		;
 }
 
-// n frames of the raster IRQ (counted up: oscar64 before cf1b548 drops the
-// exit test of a count down loop with a constant start, issue #425)
+// n frames of the raster IRQ
 static void wait_frames(char n)
 {
-	for (char i = 0; i < n; i++)
+	while (n--)
 	{
 		char f = frame_count;
 		while (frame_count == f)
