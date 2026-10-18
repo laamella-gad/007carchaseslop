@@ -8,7 +8,6 @@ all: 007carchase.prg
 build/007carchase_raw.prg: src/*.c src/*.h src/*.bin
 	mkdir -p build
 	$(OSCAR64) -n -O2 -o=$@ src/main.c
-	python3 tools/branchcheck.py build/007carchase_raw.asm || (rm $@; false)
 
 # The released PRG, checked in. Starts at the oscar64 startup code after the
 # BASIC SYS line ($080d)

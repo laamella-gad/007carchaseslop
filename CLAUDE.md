@@ -20,10 +20,6 @@ deflower --verify 007.flo    # disassembly -> out/007.asm and the .bin exports (
 petcat -2 -- 007.bas         # BASIC listing
 ```
 
-`make` also runs `tools/branchcheck.py` on the oscar64 listing and fails if a branch or jump lands mid
-instruction. That catches an oscar64 bug (in 1.32.273 up to commit 2357b11, fixed in a92fd0c): sign extending
-a `signed char` to `int` could produce a bad `BPL`.
-
 No tests. The user plays and tests in VICE; build only, and don't drive VICE from scripts.
 
 ## Architecture of the rewrite
@@ -51,6 +47,6 @@ oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs 
 own trailing comma, token pasting inside a nested macro call fails, and a function can keep a static global in a
 register across calls that change it (oscar64 issue #424, fixed in 44604ee): keep such state locally. An inlined function that
 calls one with stack arguments got a stack frame at each call site that didn't balance with the caller's, so
-the software stack crept up each game: `play_rows` is a macro for that.
+the software stack crept up each game (oscar64 issue #426, fixed in fbca293).
 A count-down loop (`while (n--)`) with a constant start loses its exit test, and the code after it is
 dropped (oscar64 issue #425, fixed in cf1b548).

@@ -101,6 +101,11 @@ void play_rows_ink(const Line *table, char ink)
 	}
 }
 
+void play_rows(const Line *table)
+{
+	play_rows_ink(table, 0);
+}
+
 void show_labels(void)
 {
 	text_at(21, 21, BLACK, "TRACK");

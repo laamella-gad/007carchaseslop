@@ -21,10 +21,9 @@ extern unsigned distance;       // passes of the section so far
 void row_wait(void);
 
 // Plays a table of src/text.c, a line a frame; ink for the colour * (the city's
-// houses). play_rows is a macro: as an inlined function oscar64 gave it a stack
-// frame at each call that didn't balance, and the software stack crept into $a000
+// houses)
 void play_rows_ink(const Line *table, char ink);
-#define play_rows(table) play_rows_ink(table, 0)
+void play_rows(const Line *table);
 
 // A table at once, for a screen shown whole (title, instructions)
 void show_rows(const Line *table);

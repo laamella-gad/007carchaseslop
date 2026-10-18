@@ -18,7 +18,6 @@ speed, with its bugs fixed.
 | `out/tune_notes.bin` | The tune's note table |
 | `007.prg`, `code.asm`, `1.bin`, `2.bin` | An older attempt, not used |
 | `src/` | The rewrite |
-| `tools/branchcheck.py` | Checks the oscar64 listing for branches into the middle of an instruction (`make` runs it) |
 | `007carchase.prg` | The rewrite, crunched (`make`) |
 
 ## The rewrite
@@ -70,8 +69,7 @@ Compiler bug: oscar64 1.32.271 at `-O2` turned the sign extension `AND #$80 / BP
 `TYA` (Y was $ff) after placing the branch, so the `BPL` landed in the middle of the `STA`. That was in
 `plan_new` with `signed char x, y`, and still happens with oscar64 at commit 2357b11 (October 2026); fixed in
 commit a92fd0c ("Fix size reduction breaking branch offset"). When a plan was drawn, the game ran into garbage
-and ended at READY. `make` runs `tools/branchcheck.py` on the listing, which fails the build if any branch or
-jump misses an instruction start.
+and ended at READY.
 
 ## The original
 
