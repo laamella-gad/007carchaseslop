@@ -387,8 +387,9 @@ const Line title_page[] = {
 	{14, "#   #  # #\\b   #   # # #  #    # #      ", "r"},
 	{15, "\\## #  # # #   \\## # # #  # \\##/ ####   ", "r"},
 	{17, "        (C)COPLIN SOFTWARE 1985",           "r"},
-	{20, "       PRESS 'I' FOR INSTRUCTIONS",         "r"},
-	{21, "       PRESS FIRE TO START GAME  ",         "r"},
+	{19, "    SLOPPY EDITION 2026 LAAMELLA GAD",              "r"},
+	{21, "       PRESS 'I' FOR INSTRUCTIONS",         "r"},
+	{22, "       PRESS FIRE TO START GAME  ",         "r"},
 	LINES_END
 };
 

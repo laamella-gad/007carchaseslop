@@ -6,6 +6,8 @@ sections, and shoot or smoke out the cars and the helicopter that come after you
 This is a C rewrite of it for [oscar64](https://github.com/drmortalwombat/oscar64), made from a disassembly of
 the original.
 
+![Title](screenshots/title.png) ![Country road](screenshots/country.png) ![Tunnel](screenshots/tunnel.png)
+
 ## Download
 
 [007carchase.prg](007carchase.prg): load and run it like any C64 program (`LOAD"007CARCHASE",8` and `RUN`), or
