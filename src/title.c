@@ -130,6 +130,8 @@ void title(void)
 		title_on = 1;
 		key = wait_key();
 		title_on = 0;
+		// a game differs from the last with how long the title was up
+		rnd_seed();
 
 		if (key != 'I')
 			break;

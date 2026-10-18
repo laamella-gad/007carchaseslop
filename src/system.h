@@ -80,6 +80,9 @@ char wait_key(void);
 // 0 to n-1
 char rnd(char n);
 
+// Seeds rnd from the moment it's called: the frame and the raster line
+void rnd_seed(void);
+
 #pragma compile("system.c")
 
 #endif

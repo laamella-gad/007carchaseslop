@@ -121,6 +121,8 @@ Bugs and oddities:
     name are cut.
   - Smoke stays while ',' is held down, as with the joystick down.
   - The joystick reads each bit, so diagonals steer and fire at once, and fire works while steering.
+  - The random numbers are seeded when a key or fire leaves the title (`rnd_seed`: the frame count and the
+    raster line), so the first game after a start isn't always the same. The original never seeds `RND`.
   - The road follows the plan. A country section after a curve always starts with its first rows, and the city
     ends on its last pass.
   - The missile can hit the helicopter, tested at each step; a hit takes the missile and any falling bomb off

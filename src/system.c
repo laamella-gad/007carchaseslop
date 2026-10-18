@@ -104,3 +104,11 @@ char rnd(char n)
 {
 	return (unsigned)rand() % n;
 }
+
+void rnd_seed(void)
+{
+	unsigned s = (frame_count << 8) | vic.raster;
+	// 0 would stay 0
+	if (s)
+		srand(s);
+}
