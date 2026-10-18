@@ -49,8 +49,8 @@ Memory: VIC bank 0 (screen $0400, ROM charset). Sprites are blocks 40-59 at $0a0
 
 oscar64 quirks seen here: no zero-argument function-like macros, `sizeof` needs parentheses, `#embed` emits its
 own trailing comma, token pasting inside a nested macro call fails, and a function can keep a static global in a
-register across calls that change it (oscar64 issue #424): keep such state locally. An inlined function that
+register across calls that change it (oscar64 issue #424, fixed in 44604ee): keep such state locally. An inlined function that
 calls one with stack arguments got a stack frame at each call site that didn't balance with the caller's, so
 the software stack crept up each game: `play_rows` is a macro for that.
-A count-down loop (`while (n--)`) around a wait for the raster IRQ loses its exit test when
-inlined, and the code after it is dropped: count up.
+A count-down loop (`while (n--)`) with a constant start loses its exit test, and the code after it is
+dropped (oscar64 issue #425, fixed in cf1b548): count up.

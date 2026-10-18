@@ -131,8 +131,8 @@ static void glide_wait(volatile char *reg, char to)
 		;
 }
 
-// n frames of the raster IRQ (counted up: oscar64 1.32.273 drops the exit test
-// of a count down loop with a constant start)
+// n frames of the raster IRQ (counted up: oscar64 before cf1b548 drops the
+// exit test of a count down loop with a constant start, issue #425)
 static void wait_frames(char n)
 {
 	for (char i = 0; i < n; i++)
